@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <math.h>
+
+#define MAX_WORD_SIZE 255
 
 FILE *source, out;
 int line = 1, col = 0;
@@ -41,9 +44,34 @@ struct {
 	{"while",	tk_whle},
 };
 
-int next_char() {
-	int c;
-	while (isspace(c = getc(source)))
+struct token *get_number() {
+	double n;
+	struct token *tok;
+	fseek(source, -1, SEEK_CUR);
+	
+	long offset = ftell(source);
+	if (fscanf(source, "%lf", &n) != 1)
+		return NULL;
+	long diff = ftell(source) - offset;
+
+	tok = malloc(sizeof(struct token));
+	if (ceil(n) == n) {
+		tok->type = tk_int;
+		tok->i = (int) n;
+		goto ret;
+	}
+
+	tok->type = tk_dobl;
+	tok->d = n;
+ret:
+	tok->line = line;
+	tok->col = col;
+	col += diff;
+	return tok;
+}
+
+int getc_source() {
+	int c = getc(source);
 	col++;
 
 	if (c == '\n') {
@@ -54,20 +82,17 @@ int next_char() {
 	return c;
 }
 
-struct token *ident_or_kw() {
-	return NULL;
-}
-
-
-
 struct token *get_token() {
-	int c = next_char();
-	switch(c) {
+	switch(getc_source()) {
 		case 'a' ... 'z':
 		case 'A' ... 'Z':
-			
+				
 			break;
-		case '0' ... '9': return &((struct token) {tk_int, 0, 0, {get_number()}, NULL}); break;
+		case '0' ... '9':
+			return get_number();
+			break;
+
+		case EOF: return NULL; break;
 		default: printf("Unrecognized character\n"); break;
 /*
         case '}':  next_ch(); return (tok_s){tk_Rbrace, err_line, err_col, {0}};
@@ -90,29 +115,45 @@ struct token *get_token() {
 	return NULL;
 }
 
-void print_token(struct token tok) {
-	printf("%.8s",
+void print_token(struct token *tok) {
+	printf("%i %i %.8s", tok->line, tok->col,
 		&"tk_char tk_dobl tk_else tk_if   tk_int  tk_str  tk_whle tk_eos  "
 		 "tk_add  tk_sub  tk_mul  tk_div  tk_mod  tk_eq   tk_neq  tk_grt  "
-		 "tk_grte tk_les  tk_lese "[tok.type * 8]
+		 "tk_grte tk_les  tk_lese "[tok->type * 8]
 	);
 	
-	if (tok.type == tk_int) {
-		printf("%i", tok.i);
+	switch (tok->type) {
+		case tk_int:
+			printf("%i" , tok->i);
+			break;
+
+		case tk_dobl:
+			printf("%lf", tok->d);
+			break;
+		default: break;
 	}
 
 	printf("\n");
 }
 
-void lex() {
+struct token *lex() {
 	struct token *tok = get_token();
-	print_token(*tok);
+	struct token *tokens = tok;
+
+	while (tok) {
+		print_token(tok);
+		tok->next = get_token();
+		tok = tok->next;
+	}
+
+	return tokens;
 }
 
 int main() {
 	source = fopen("example.auto", "r+");
 	if (!source)
 		error_exit("Invalid source file");
+	setvbuf(source, NULL, _IONBF, 0);
 
 	lex();
 	return 0;
