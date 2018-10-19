@@ -1,1 +1,2 @@
-double c = "5.123"
+double c = "5.123";
+char a = 'g';

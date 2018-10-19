@@ -15,10 +15,10 @@ void error_exit(const char *msg) {
 }
 
 typedef enum {
-	tk_char, tk_dobl, tk_else, tk_if,   tk_int,  tk_str,  tk_whle, tk_eos,
+	tk_char, tk_dobl, tk_int,  tk_str,  tk_else, tk_if,   tk_whle, tk_eos,
 	tk_add,  tk_sub,  tk_mul,  tk_div,  tk_mod,  tk_eq,   tk_neq,  tk_grt,
 	tk_grte, tk_les,  tk_lese, tk_id, 	tk_lint, tk_ldbl, tk_asg,  tk_lpar,
-	tk_rpar, tk_lbrc, tk_rbrc, tk_coma, tk_lstr,  tk_lchr
+	tk_rpar, tk_lbrc, tk_rbrc, tk_coma, tk_lstr, tk_lchr
 } token_type;
 
 struct token {
@@ -45,6 +45,31 @@ struct {
 	{"string",	tk_str},
 	{"while",	tk_whle},
 }, *kw;
+
+void print_tokens(struct token *tokens) {
+	struct token *tok = tokens;
+
+	while (tok) {
+		printf("%i %i %.8s", tok->line, tok->col,
+			&"tk_char tk_dobl tk_else tk_if   tk_int  tk_str  tk_whle tk_eos  "
+			 "tk_add  tk_sub  tk_mul  tk_div  tk_mod  tk_eq   tk_neq  tk_grt  "
+			 "tk_grte tk_les  tk_lese tk_id   tk_cint tk_cdbl tk_asg  tk_lpar "
+			 "tk_rpar tk_lbrc tk_rbrc tk_coma tk_lstr tk_lchr "[tok->type * 8]
+		);
+		
+		switch (tok->type) {
+			case tk_id: printf("%s", tok->s); break;
+			case tk_lint: printf("%i" , tok->i); break;
+			case tk_ldbl: printf("%lf", tok->d); break;
+			case tk_lstr: printf("\"%s\"", tok->s); break;
+			case tk_lchr: printf("\'%c\'", tok->c); break;
+			default: break;
+		}
+
+		printf("\n");
+		tok = tok->next;
+	}
+}
 
 struct token *new_token(token_type type) {
 	struct token *tok = malloc(sizeof(struct token));
@@ -113,12 +138,27 @@ struct token *ident_or_kw() {
 }
 
 struct token *string_lit() {
+	struct token *tok;
 	char buf[MAX_WORD_SIZE];
-	fscanf("%255[^\"]\"");
+	fscanf(source, "%255[^\"]\"", buf);
+
+	size_t len = strnlen(buf, MAX_WORD_SIZE);
+	tok = malloc(sizeof(struct token));
+	tok->type = tk_lstr;
+	tok->s = malloc(len);
+	strncpy(tok->s, buf, len);
+	return tok;
 }
 
 struct token *char_lit() {
-	return NULL;
+	struct token *tok;
+	char c;
+	fscanf(source, "%c\'", &c);
+
+	tok = malloc(sizeof(char));
+	tok->type = tk_lchr;
+	tok->c = c;
+	return tok;
 }
 
 struct token *get_token() {
@@ -159,35 +199,29 @@ struct token *get_token() {
 	return tok;
 }
 
-void print_token(struct token *tok) {
-	printf("%i %i %.8s", tok->line, tok->col,
-		&"tk_char tk_dobl tk_else tk_if   tk_int  tk_str  tk_whle tk_eos  "
-		 "tk_add  tk_sub  tk_mul  tk_div  tk_mod  tk_eq   tk_neq  tk_grt  "
-		 "tk_grte tk_les  tk_lese tk_id   tk_cint tk_cdbl tk_asg  tk_lpar "
-		 "tk_rpar tk_lbrc tk_rbrc tk_coma tk_lstr tk_lchr "[tok->type * 8]
-	);
-	
-	switch (tok->type) {
-		case tk_id: printf("%s", tok->s); break;
-		case tk_lint: printf("%i" , tok->i); break;
-		case tk_ldbl: printf("%lf", tok->d); break;
-		default: break;
-	}
-
-	printf("\n");
-}
-
 struct token *lex() {
 	struct token *tok = get_token();
 	struct token *tokens = tok;
 
 	while (tok) {
-		print_token(tok);
 		tok->next = get_token();
 		tok = tok->next;
 	}
 
 	return tokens;
+}
+
+void parse(struct token *tokens) {
+	struct token *tok = tokens;
+
+	while (tok) {
+		switch(tok->type) {
+			case tk_char ... tk_str:
+				
+			break;
+		}
+		tok = tok->next;
+	}
 }
 
 int main() {
@@ -196,6 +230,8 @@ int main() {
 		error_exit("Invalid source file");
 	setvbuf(source, NULL, _IONBF, 0);
 
-	lex();
+	struct token *tokens = lex();
+	print_tokens(tokens);
+	parse(tokens);
 	return 0;
 }
