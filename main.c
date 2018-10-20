@@ -17,8 +17,8 @@ void error_exit(const char *msg) {
 typedef enum {
 	tk_char, tk_dobl, tk_int,  tk_str,  tk_else, tk_if,   tk_whle, tk_eos,
 	tk_add,  tk_sub,  tk_mul,  tk_div,  tk_mod,  tk_eq,   tk_neq,  tk_grt,
-	tk_grte, tk_les,  tk_lese, tk_id, 	tk_lint, tk_ldbl, tk_asg,  tk_lpar,
-	tk_rpar, tk_lbrc, tk_rbrc, tk_coma, tk_lstr, tk_lchr
+	tk_grte, tk_les,  tk_lese, tk_id, 	tk_lint, tk_ldbl, tk_lchr,  tk_lstr,
+	tk_rpar, tk_lbrc, tk_rbrc, tk_coma, tk_asg,  tk_lpar, tk_lbrk,  tk_rbrk
 } token_type;
 
 struct token {
@@ -46,28 +46,40 @@ struct {
 	{"while",	tk_whle},
 }, *kw;
 
+void print_token(struct token *tok) {
+	printf("%i %i %.8s", tok->line, tok->col,
+		&"tk_char tk_dobl tk_int  tk_str  tk_else tk_if   tk_whle tk_eos  "
+		 "tk_add  tk_sub  tk_mul  tk_div  tk_mod  tk_eq   tk_neq  tk_grt  "
+		 "tk_grte tk_les  tk_lese tk_id   tk_lint tk_ldbl tk_lchr tk_lstr "
+		 "tk_rpar tk_lbrc tk_rbrc tk_coma tk_asg  tk_lpar tk_lbrk tk_rbrk "[tok->type * 8]
+	);
+	
+	switch (tok->type) {
+		case tk_id: printf("%s", tok->s); break;
+		case tk_lint: printf("%i" , tok->i); break;
+		case tk_ldbl: printf("%lf", tok->d); break;
+		case tk_lstr: printf("\"%s\"", tok->s); break;
+		case tk_lchr: printf("\'%c\'", tok->c); break;
+		default: break;
+	}
+
+	printf("\n");
+}
+
 void print_tokens(struct token *tokens) {
 	struct token *tok = tokens;
 
 	while (tok) {
-		printf("%i %i %.8s", tok->line, tok->col,
-			&"tk_char tk_dobl tk_else tk_if   tk_int  tk_str  tk_whle tk_eos  "
-			 "tk_add  tk_sub  tk_mul  tk_div  tk_mod  tk_eq   tk_neq  tk_grt  "
-			 "tk_grte tk_les  tk_lese tk_id   tk_cint tk_cdbl tk_asg  tk_lpar "
-			 "tk_rpar tk_lbrc tk_rbrc tk_coma tk_lstr tk_lchr "[tok->type * 8]
-		);
-		
-		switch (tok->type) {
-			case tk_id: printf("%s", tok->s); break;
-			case tk_lint: printf("%i" , tok->i); break;
-			case tk_ldbl: printf("%lf", tok->d); break;
-			case tk_lstr: printf("\"%s\"", tok->s); break;
-			case tk_lchr: printf("\'%c\'", tok->c); break;
-			default: break;
-		}
-
-		printf("\n");
+		print_token(tok);
 		tok = tok->next;
+	}
+}
+
+int prec(struct token *tok) {
+	switch(tok->type) {
+		case tk_mul ... tk_mod: return 3; break;
+		case tk_add ... tk_sub: return 2; break;
+		default: return 0; break;
 	}
 }
 
@@ -75,6 +87,13 @@ struct token *new_token(token_type type) {
 	struct token *tok = malloc(sizeof(struct token));
 	tok->type = type;
 
+	return tok;
+}
+
+struct token *new_token_op(token_type type, int precedence) {
+	struct token *tok = new_token(type);
+	tok->i = precedence;
+	
 	return tok;
 }
 
@@ -172,16 +191,18 @@ struct token *get_token() {
 		case '=': tok = follow(tk_asg, tk_eq, '='); break;
 		case '>': tok = follow(tk_grt, tk_grte, '='); break;
 		case '<': tok = follow(tk_les, tk_lese, '='); break;
-		case '!': tok = new_token(tk_neq); break;
-		case '+': tok = new_token(tk_add); break;
-		case '-': tok = new_token(tk_sub); break;
-		case '*': tok = new_token(tk_mul); break;
-		case '/': tok = new_token(tk_div); break;
-		case '%': tok = new_token(tk_mod); break;
+		case '!': tok = new_token_op(tk_neq, 1); break;
+		case '+': tok = new_token_op(tk_add, 2); break;
+		case '-': tok = new_token_op(tk_sub, 2); break;
+		case '*': tok = new_token_op(tk_mul, 3); break;
+		case '/': tok = new_token_op(tk_div, 3); break;
+		case '%': tok = new_token_op(tk_mod, 3); break;
 		case '{': tok = new_token(tk_lbrc); break;
 		case '}': tok = new_token(tk_rbrc); break;
 		case '(': tok = new_token(tk_lpar); break;
 		case ')': tok = new_token(tk_rpar); break;
+		case '[': tok = new_token(tk_lbrk); break;
+		case ']': tok = new_token(tk_rbrk); break;
 		case ';': tok = new_token(tk_eos); break;
 		case '"': tok = string_lit(); break;
 		case '\'': tok = char_lit(); break;
@@ -211,13 +232,59 @@ struct token *lex() {
 	return tokens;
 }
 
+void push(struct token **stack, struct token *tok) {
+	printf("p = %p\n", stack);
+	if (!(*stack)) {
+		return;
+	}
+/*
+	(*stack)->next = tok;
+	(*stack) = (*stack)->next;
+	*/
+}
+
+struct token *pop(struct token **stack) {
+	struct token *tok = *stack;
+	(*stack) = (*stack)->next;
+	return tok;
+}
+
+struct token *peek(struct token **stack) {
+	printf("p = %p\n", (*stack));
+	return (*stack);
+}
+
+struct token *write_expr(struct token *tok) {
+	struct token *output;
+	struct token *operator;
+	while (tok) {
+		printf("Tok -> ");
+		print_token(tok);
+		switch(tok->type) {
+			case tk_id ... tk_lstr: push(&output, tok); break;
+			case tk_add ... tk_lese: {
+				while (prec(peek(&output)) >= prec(tok))
+					push(&output, pop(&operator));
+
+				push(&operator, tok); 
+			} break;
+		}
+		tok = tok->next;
+	}
+
+
+	printf("Expr: \n");
+	print_tokens(output);
+	return tok;
+}
+
 void parse(struct token *tokens) {
 	struct token *tok = tokens;
 
 	while (tok) {
 		switch(tok->type) {
 			case tk_char ... tk_str:
-				
+				write_expr(tok->next);						
 			break;
 		}
 		tok = tok->next;
