@@ -3,8 +3,10 @@
 #include <ctype.h>
 #include <string.h>
 #include <math.h>
+#include "ht.h"
 
 #define MAX_WORD_SIZE 255
+#define HT_BUCKET_SIZE 256
 
 FILE *source, *out;
 int line = 1, col = 0, ch = ' ';
@@ -233,61 +235,92 @@ struct token *lex() {
 }
 
 void push(struct token **stack, struct token *tok) {
-	printf("p = %p\n", stack);
 	if (!(*stack)) {
+		(*stack) = tok;
+		(*stack)->next = NULL;
 		return;
 	}
-/*
-	(*stack)->next = tok;
-	(*stack) = (*stack)->next;
-	*/
+	
+	tok->next = (*stack);
+	(*stack) = tok;
 }
 
 struct token *pop(struct token **stack) {
 	struct token *tok = *stack;
 	(*stack) = (*stack)->next;
+
 	return tok;
 }
 
 struct token *peek(struct token **stack) {
-	printf("p = %p\n", (*stack));
 	return (*stack);
 }
 
 struct token *write_expr(struct token *tok) {
-	struct token *output;
-	struct token *operator;
+	struct token *output = NULL;
+ 	struct token *operator = NULL;
+	struct token *next = NULL;
+
 	while (tok) {
-		printf("Tok -> ");
-		print_token(tok);
+		next = tok->next;
 		switch(tok->type) {
 			case tk_id ... tk_lstr: push(&output, tok); break;
-			case tk_add ... tk_lese: {
+			case tk_add ... tk_lese:
 				while (prec(peek(&output)) >= prec(tok))
 					push(&output, pop(&operator));
 
 				push(&operator, tok); 
-			} break;
+			break;
+			case tk_lpar: push(&operator, tok); break;
+			case tk_rpar:
+				while (peek(&operator) && peek(&operator)->type != tk_lpar)
+					push(&output, pop(&operator));
+
+				if (!peek(&operator))
+					return tok;
+				pop(&operator);
+			break;
+			default: return tok; break;
 		}
-		tok = tok->next;
+
+		tok = next;
 	}
 
+	while (peek(&operator))
+		push(&output, pop(&operator));
 
-	printf("Expr: \n");
-	print_tokens(output);
 	return tok;
 }
 
-void parse(struct token *tokens) {
+int expect(struct token *tok, token_type type) {
+	if (!tok || tok->type != type) {
+		while (tok && (tok->type != tk_eos || tok->type != tk_lpar))
+			tok = tok->next;
+
+		return 0;
+	}
+	
+	return 1;
+}
+
+int parse_scope(struct token *tokens) {
 	struct token *tok = tokens;
+	struct ht *scope = new_ht(HT_BUCKET_SIZE);
 
 	while (tok) {
 		switch(tok->type) {
 			case tk_char ... tk_str:
-				write_expr(tok->next);						
+			break;
+
+			case tk_if:
+			break;
+
+			case tk_rbrk:
+				
 			break;
 		}
-		tok = tok->next;
+
+		//tok = expect(tok, tk_eos);
 	}
 }
 
@@ -298,7 +331,9 @@ int main() {
 	setvbuf(source, NULL, _IONBF, 0);
 
 	struct token *tokens = lex();
+	printf("Tokens:\n");
 	print_tokens(tokens);
+	printf("\n");
 	parse(tokens);
 	return 0;
 }
