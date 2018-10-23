@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 #include "ht.h"
 
 struct ht *new_ht(int size) {
@@ -10,7 +11,7 @@ struct ht *new_ht(int size) {
 }
 
 void ht_add(struct ht *table, struct ht_item *item) {
-	int index = item->id % table->bucket_size;
+	int index = hash(item->name) % table->bucket_size;
 	struct ht_item *stop = table->bucket[index];
 
 	if (!stop)
@@ -23,12 +24,12 @@ void ht_add(struct ht *table, struct ht_item *item) {
 	}
 }
 
-struct ht_item *ht_get(struct ht *table, int id) {
-	int index = id % table->bucket_size;
+struct ht_item *ht_get(struct ht *table, char *name) {
+	int index = hash(name) % table->bucket_size;
 	struct ht_item *current = table->bucket[index];
 
 	while (current) {
-		if (id == current->id)
+		if (strcmp(current->name, name) == 0)
 			break;
 		else
 			current = current->next;
@@ -37,21 +38,31 @@ struct ht_item *ht_get(struct ht *table, int id) {
 	return current;
 }
 
-void ht_del(struct ht *table, int id) {
-	int index = id % table->bucket_size;
+void ht_del(struct ht *table, char *name) {
+	int index = hash(name) % table->bucket_size;
 	struct ht_item *current = table->bucket[index];
 
-	if (current && current->id == id) {
+	if (current && strcmp(current->name, name) == 0) {
 		table->bucket[index] = current->next;
 		return;
 	}
 
 	while (current->next) {
-		if (current->next->id == id) {
+		if (strcmp(current->next->name, name) == 0) {
 			current->next = current->next->next;
 			break;
 		}
 
 		current = current->next;
 	}
+}
+
+unsigned long hash(char *name) {
+	unsigned long hash = 5381;
+	int c;
+
+	while (c = *name++)
+		hash = ((hash << 5) + hash) + c;
+
+	return hash;
 }
