@@ -18,20 +18,11 @@
 
 FILE *source, *out;
 char vline[MAX_LINE_SIZE];
-int line = 1, col = 0, ch = ' ', vline_i;
+int line = 1, col = 0, ch = ' ';
 
 void error_exit(const char *msg) {
 	printf("[ERROR] %s\n", msg);
 	exit(1);
-}
-
-void error_log(int line, int col, const char *msg, ...) {
-	va_list arglist;
-	printf(C_RED"[ERROR]"C_RST);
-	va_start(arglist, msg);
-	vprintf(msg, arglist);
-	va_end(arglist);
-	printf(" %i,%i %s\n", line, col, msg);
 }
 
 typedef enum {
@@ -46,13 +37,29 @@ struct token {
 	token_type type;
 	int line, col;
 	union {
-		char c;
 		int i;
 		double d;
 		char *s;
 	};
 	struct token *next;
 };
+
+char *get_type_name(token_type type) {
+	return &"tk_char tk_dobl tk_int  tk_str  tk_else tk_if   tk_whle tk_eos  "
+			"tk_add  tk_sub  tk_mul  tk_div  tk_mod  tk_eq   tk_neq  tk_grt  "
+		    "tk_grte tk_les  tk_lese tk_id   tk_lint tk_ldbl tk_lchr tk_lstr "
+		    "tk_rpar tk_lbrc tk_rbrc tk_coma tk_asg  tk_lpar tk_lbrk tk_rbrk "
+			"tk_prnt"[type * 8];
+}
+
+void error_log(int line, int col, const char *msg, ...) {
+	va_list arglist;
+	printf(C_RED"[ERROR] %i,%i "C_RST, line, col);
+	va_start(arglist, msg);
+	vprintf(msg, arglist);
+	va_end(arglist);
+	printf("\n");
+}
 
 struct {
 	char *s;
@@ -68,13 +75,6 @@ struct {
 	{"while",	tk_whle},
 }, *kw;
 
-char *get_type_name(token_type type) {
-	return &"tk_char tk_dobl tk_int  tk_str  tk_else tk_if   tk_whle tk_eos  "			  "tk_add  tk_sub  tk_mul  tk_div  tk_mod  tk_eq   tk_neq  tk_grt  "
-		    "tk_grte tk_les  tk_lese tk_id   tk_lint tk_ldbl tk_lchr tk_lstr "
-		    "tk_rpar tk_lbrc tk_rbrc tk_coma tk_asg  tk_lpar tk_lbrk tk_rbrk "
-			"tk_prnt"[type * 8];
-}
-
 void print_token(struct token *tok) {
 	printf("%i %i %.8s", tok->line, tok->col, get_type_name(tok->type));
 	
@@ -82,8 +82,7 @@ void print_token(struct token *tok) {
 		case tk_id: printf("%s", tok->s); break;
 		case tk_lint: printf("%i" , tok->i); break;
 		case tk_ldbl: printf("%lf", tok->d); break;
-		case tk_lstr: printf("\"%s\"", tok->s); break;
-		case tk_lchr: printf("\'%c\'", tok->c); break;
+		case tk_lstr: tk_lchr: printf("\"%s\"", tok->s); break;
 		default: break;
 	}
 
@@ -103,7 +102,7 @@ int prec(struct token *tok) {
 	switch(tok->type) {
 		case tk_mul ... tk_mod: return 3; break;
 		case tk_add ... tk_sub: return 2; break;
-		default: return 0; break;
+		default: return 1; break;
 	}
 }
 
@@ -121,26 +120,6 @@ struct token *new_token_op(token_type type, int precedence) {
 	return tok;
 }
 
-struct token *number() {
-	double n;
-	struct token *tok = NULL;
-	ungetc(ch, source);
-	
-	if (fscanf(source, "%lf", &n) != 1)
-		return NULL;
-
-	tok = malloc(sizeof(struct token));
-	if (ceil(n) == n) {
-		tok->type = tk_lint;
-		tok->i = (int) n;
-		return tok;
-	}
-
-	tok->type = tk_ldbl;
-	tok->d = n;
-	return tok;
-}
-
 void getc_source() {
 	ch = getc(source);
 	col++;
@@ -149,6 +128,32 @@ void getc_source() {
 		line++;
 		col = 0;
 	}
+}
+
+struct token *number() {
+	char buf[MAX_WORD_SIZE];
+	int i = 0;
+	int c;
+	struct token *tok = NULL;
+	
+	int found_point = 0;
+	while (isdigit(ch) || (ch == '.' && !found_point)) {
+		if (ch == '.') found_point = 1;
+		buf[i++] = ch;
+		getc_source();
+	}
+	ungetc(ch, source);
+
+	tok = malloc(sizeof(struct token));
+	if (found_point) {
+		tok->type = tk_ldbl;
+		tok->d = atof(buf);
+	} else {
+		tok->type = tk_lint;
+		tok->i = atoi(buf);
+	}
+
+	return tok;
 }
 
 int comp(const void *a, const void *b) {
@@ -186,6 +191,7 @@ struct token *string_lit() {
 	fscanf(source, "%255[^\"]\"", buf);
 
 	size_t len = strnlen(buf, MAX_WORD_SIZE);
+	col += len;
 	tok = malloc(sizeof(struct token));
 	tok->type = tk_lstr;
 	tok->s = malloc(len);
@@ -195,12 +201,14 @@ struct token *string_lit() {
 
 struct token *char_lit() {
 	struct token *tok;
-	char c;
-	fscanf(source, "%c\'", &c);
+	char buf[3];
+	fscanf(source, "%2s\'", buf);
+	int len = strlen(buf);
 
-	tok = malloc(sizeof(char));
+	tok = malloc(sizeof(struct token));
 	tok->type = tk_lchr;
-	tok->c = c;
+	tok->s = malloc(len);
+	strcpy(tok->s, buf);
 	return tok;
 }
 
@@ -227,6 +235,7 @@ struct token *get_token() {
 		case ')': tok = new_token(tk_rpar); break;
 		case '[': tok = new_token(tk_lbrk); break;
 		case ']': tok = new_token(tk_rbrk); break;
+		case ',': tok = new_token(tk_coma); break;
 		case ';': tok = new_token(tk_eos); break;
 		case '"': tok = string_lit(); break;
 		case '\'': tok = char_lit(); break;
@@ -271,6 +280,7 @@ struct token *pop(struct token **stack) {
 	struct token *tok = *stack;
 	(*stack) = (*stack)->next;
 
+	tok->next = NULL;
 	return tok;
 }
 
@@ -337,6 +347,7 @@ ext:
 ret:
 	*tokens = tok;
 	*expr = output;
+	last->next = NULL;
 }
 
 void write_decl(char *name, token_type type) {
@@ -356,10 +367,8 @@ void declare_id(struct ht *scope, char *name, token_type type) {
 }
 
 int step(struct token **tokens, struct token *tok, token_type type) {
-	int line = tok->line;
-	int col = tok->col;
-		error_log(line, col, "Expected %s", get_type_name(type));
 	if (!tok || tok->type != type) {
+		error_log(line, col, "Expected %.8s", get_type_name(type));
 		while (tok && tok->type != tk_eos)
 			tok = tok->next;
 		
@@ -373,6 +382,7 @@ int step(struct token **tokens, struct token *tok, token_type type) {
 
 int step_over(struct token **tokens, struct token *tok, token_type type) {
 	if (!tok || tok->type != type) {
+		error_log(tok->line, tok->col, "Expected %.8s", get_type_name(type));
 		while (tok && tok->type != tk_eos)
 			tok = tok->next;
 
@@ -388,13 +398,11 @@ int step_over(struct token **tokens, struct token *tok, token_type type) {
 void write_expr(struct token *expr) {
 	while (expr) {
 		switch(expr->type) {
-			case tk_lchr: writes("PUSHKC \'%c\'", expr->c); break;
+			case tk_lchr: writes("PUSHKC \'%s\'", expr->s); break;
 			case tk_lint: writes("PUSHKI %i", expr->i); break;
 			case tk_ldbl: writes("PUSHKD %lf", expr->d); break;
 			case tk_lstr: writes("PUSHKS \"%s\"", expr->s); break;
-			case tk_id:
-			
-			break;
+			case tk_id: writes("PUSH %s", expr->s); break;
 			case tk_add: writes("ADD"); break;
 			case tk_sub: writes("SUB"); break;
 			case tk_mul: writes("MUL"); break;
@@ -436,7 +444,7 @@ int parse_scope(struct token *tokens) {
 				declare_id(scope, name, type);
 
 				if (!step_over(&tok, tok->next, tk_asg))
-					error_exit("expected tk_asg");
+					break;
 
 				struct token *expr = NULL;
 				parse_expr(&tok, tok, &expr);
@@ -451,12 +459,20 @@ int parse_scope(struct token *tokens) {
 				
 			break;
 
-			case tk_prnt: {
-				struct token *expr;
-				parse_expr(&tok, tok->next, &expr);
-				write_expr(expr);
-				writes("WRT");
-			} break;
+			case tk_prnt:
+				if (!step(&tok, tok->next, tk_lpar))
+					break;
+
+				do {
+					tok = tok->next;
+					struct token *expr;
+					parse_expr(&tok, tok, &expr);
+					write_expr(expr);
+					writes("WRT");
+				} while (tok->type == tk_coma);
+
+				step_over(&tok, tok, tk_rpar);
+			break;
 
 			default: printf("default\n"); print_token(tok); break;
 		}
