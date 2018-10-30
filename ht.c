@@ -5,7 +5,7 @@
 struct ht *new_ht(int size) {
 	struct ht *table = malloc(sizeof(struct ht));
 	table->bucket_size = size;
-	table->bucket= calloc(table->bucket_size, sizeof(struct ht_item *));
+	table->bucket = calloc(table->bucket_size, sizeof(struct ht_item *));
 
 	return table;
 }
@@ -65,4 +65,30 @@ unsigned long hash(char *name) {
 		hash = ((hash << 5) + hash) + c;
 
 	return hash;
+}
+
+struct ht_item *first(struct ht *table) {
+	for (int i = 0; i < table->bucket_size; i++) {
+		if (table->bucket[i])
+			return table->bucket[i];
+	}
+		
+	return NULL;
+}
+
+struct ht_item *next(struct ht *table, struct ht_item *current) {
+	if (!current)
+		return NULL;
+
+	if (current->next)
+		return current->next;
+
+	int index = hash(current->name) % table->bucket_size;
+	while (++index < table->bucket_size) {	
+		current = table->bucket[index];
+		if (current)
+			return current;
+	}
+
+	return NULL;
 }

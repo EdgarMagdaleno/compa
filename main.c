@@ -25,11 +25,11 @@ void error_exit(const char *msg) {
 }
 
 typedef enum {
-	tk_char, tk_dobl, tk_int,  tk_str,  tk_else, tk_if,   tk_whle, tk_eos,
-	tk_add,  tk_sub,  tk_mul,  tk_div,  tk_mod,  tk_eq,   tk_neq,  tk_grt,
-	tk_grte, tk_les,  tk_lese, tk_id, 	tk_lint, tk_ldbl, tk_lchr,  tk_lstr,
-	tk_rpar, tk_lbrc, tk_rbrc, tk_coma, tk_asg,  tk_lpar, tk_lbrk,  tk_rbrk,
-	tk_prnt
+	tk_char, tk_int,  tk_dobl, tk_str,  tk_vchr, tk_vint, tk_vdbl, tk_vstr,
+	tk_else, tk_if,   tk_whle, tk_eos,  tk_add,  tk_sub,  tk_mul,  tk_div,
+	tk_mod,  tk_eq,   tk_neq,  tk_grt,  tk_grte, tk_les,  tk_lese, tk_id,
+	tk_lint, tk_ldbl, tk_lchr, tk_lstr, tk_rpar, tk_lbrc, tk_rbrc, tk_coma,
+	tk_asg,  tk_lpar, tk_lbrk, tk_rbrk, tk_prnt
 } token_type;
 
 struct token {
@@ -44,11 +44,11 @@ struct token {
 };
 
 char *get_type_name(token_type type) {
-	return &"tk_char tk_dobl tk_int  tk_str  tk_else tk_if   tk_whle tk_eos  "
-			"tk_add  tk_sub  tk_mul  tk_div  tk_mod  tk_eq   tk_neq  tk_grt  "
-		    "tk_grte tk_les  tk_lese tk_id   tk_lint tk_ldbl tk_lchr tk_lstr "
-		    "tk_rpar tk_lbrc tk_rbrc tk_coma tk_asg  tk_lpar tk_lbrk tk_rbrk "
-			"tk_prnt"[type * 8];
+	return &"tk_char tk_int  tk_dobl tk_str  tk_vchr tk_vint tk_vdbl tk_vstr "
+			"tk_else tk_if   tk_whle tk_eos  tk_add  tk_sub  tk_mul  tk_div  "
+			"tk_mod  tk_eq   tk_neq  tk_grt  tk_grte tk_les  tk_lese tk_id   "
+			"tk_lint tk_ldbl tk_lchr tk_lstr tk_rpar tk_lbrc tk_rbrc tk_coma "
+			"tk_asg  tk_lpar tk_lbrk tk_rbrk tk_prnt"[type * 8];
 }
 
 void error_log(int line, int col, const char *msg, ...) {
@@ -355,6 +355,10 @@ void write_decl(struct ht_item *id) {
 		case tk_int: fprintf(out, "DCLI %s\n", id->name); break;
 		case tk_dobl: fprintf(out, "DCLD %s\n", id->name); break;
 		case tk_str: fprintf(out, "DCLS %s\n", id->name); break;
+		case tk_vchr: fprintf(out, "DCLVC %s\n", id->name); break;
+		case tk_vint: fprintf(out, "DCLVI %s\n", id->name); break;
+		case tk_vdbl: fprintf(out, "DCLVD %s\n", id->name); break;
+		case tk_vstr: fprintf(out, "DCLVS %s\n", id->name); break;
 	}
 }
 
@@ -366,9 +370,9 @@ struct ht_item *declare_id(struct ht *scope, struct token *tok, token_type type)
 	return new_id;
 }
 
-int step(struct token **tokens, struct token *tok, token_type type) {
+int expect(struct token **tokens, struct token *tok, token_type type) {
 	if (!tok || tok->type != type) {
-		error_log(line, col, "Expected %.8s", get_type_name(type));
+		error_log(tok->line, tok->col, "Expected %.8s", get_type_name(type));
 		while (tok && tok->type != tk_eos)
 			tok = tok->next;
 		
@@ -380,7 +384,7 @@ int step(struct token **tokens, struct token *tok, token_type type) {
 	return 1;
 }
 
-int step_over(struct token **tokens, struct token *tok, token_type type) {
+int expect_over(struct token **tokens, struct token *tok, token_type type) {
 	if (!tok || tok->type != type) {
 		error_log(tok->line, tok->col, "Expected %.8s", get_type_name(type));
 		while (tok && tok->type != tk_eos)
@@ -421,11 +425,24 @@ void write_expr(struct token *expr) {
 
 void write_pop_id(struct ht_item *id) {
 	switch(id->type) {
-		case tk_int: writes("POPI %s", id->name); break;
 		case tk_char: writes("POPC %s", id->name); break;
+		case tk_int: writes("POPI %s", id->name); break;
 		case tk_dobl: writes("POPD %s", id->name); break;
 		case tk_str: writes("POPS %s", id->name); break;
+		case tk_vchr: writes("POPVC %s", id->name); break;
+		case tk_vint: writes("POPVI %s", id->name); break;
+		case tk_vdbl: writes("POPSVD %s", id->name); break;
+		case tk_vstr: writes("POPSVS %s", id->name); break;
 	}
+}
+
+int step(struct token **tokens, struct token *tok, token_type type) {
+	*tokens = tok;
+	if (!tok || tok->type != type) {
+		return 0;
+	}
+	
+	return 1;
 }
 
 struct token *parse_scope(struct token *tokens) {
@@ -436,16 +453,42 @@ struct token *parse_scope(struct token *tokens) {
 		switch(tok->type) {
 			case tk_char ... tk_str: {
 				token_type type = tok->type;
-				if(!step(&tok, tok->next, tk_id))
+				struct token *expr = NULL;
+				struct ht_item *id = NULL;
+
+				if (!step(&tok, tok->next, tk_lbrk))
+					goto not_arr;
+				
+				tok = tok->next;
+				type += 4;
+				parse_expr(&tok, tok, &expr);
+				write_expr(expr);
+
+				if (!expect_over(&tok, tok, tk_rbrk))
+					break;
+
+				if (!expect(&tok, tok, tk_id))
 					break;
 				
-				struct ht_item *id = declare_id(scope, tok, type);
+				id = declare_id(scope, tok, type);
+				write_decl(id);
+				tok = tok->next;
+				break;
+			not_arr:
+				if(!expect(&tok, tok, tk_id))
+					break;
+				
+				id = declare_id(scope, tok, type);
 				write_decl(id);
 
-				if (!step_over(&tok, tok->next, tk_asg))
+				if (tok->next && tok->next->type == tk_eos) {
+					tok = tok->next;
+					break;
+				}
+
+				if (!expect_over(&tok, tok->next, tk_asg))
 					break;
 
-				struct token *expr = NULL;
 				parse_expr(&tok, tok, &expr);
 				write_expr(expr);
 				write_pop_id(id);
@@ -454,27 +497,40 @@ struct token *parse_scope(struct token *tokens) {
 			case tk_id: {
 				struct ht_item *id = ht_get(scope, tok->s);
 
-				if (!step(&tok, tok->next, tk_asg))
-					break;
+				if(id->type < tk_vchr || id->type > tk_vstr)
+					goto cont;
+				
+				if (!step(&tok, tok->next, tk_lbrk))
+					goto not_arr;
 				
 				struct token *expr = NULL;
+				tok = tok->next;
+				parse_expr(&tok, tok, &expr);
+				write_expr(expr);
+
+				if (!expect_over(&tok, tok, tk_rbrk))
+					break;
+			cont:
+				if (!expect(&tok, tok->next, tk_asg))
+					break;
+				
 				parse_expr(&tok, tok->next, &expr);
 				write_expr(expr);
 				write_pop_id(id);
 			} break;
 
 			case tk_if: {
-				if (!step_over(&tok, tok->next, tk_lpar))
+				if (!expect_over(&tok, tok->next, tk_lpar))
 					break;
 
 				struct token *expr = NULL;
 				parse_expr(&tok, tok, &expr);
 				write_expr(expr);
 
-				if (!step_over(&tok, tok, tk_rpar))
+				if (!expect_over(&tok, tok, tk_rpar))
 					break;
 
-				if (!step_over(&tok, tok, tk_lbrc))
+				if (!expect_over(&tok, tok, tk_lbrc))
 					break;
 
 				int label = current_label++;
@@ -482,18 +538,23 @@ struct token *parse_scope(struct token *tokens) {
 				tok = parse_scope(tok);
 				writes("%i:", label);
 
-				if (!step_over(&tok, tok, tk_rbrc))
+				if (!expect_over(&tok, tok, tk_rbrc))
 					break;
 			} break;
 
-			case tk_rbrc: return tok; break;
+			case tk_rbrc: {
+				struct ht_item *item = first(scope);
 
-			case tk_rbrk:
-				return tok;	
-			break;
+				while (item) {
+					writes("FREE %s", item->name);
+					item = next(scope, item);
+				}
+
+				return tok;
+			} break;
 
 			case tk_prnt:
-				if (!step(&tok, tok->next, tk_lpar))
+				if (!expect(&tok, tok->next, tk_lpar))
 					break;
 
 				do {
@@ -504,13 +565,13 @@ struct token *parse_scope(struct token *tokens) {
 					writes("WRT");
 				} while (tok->type == tk_coma);
 
-				step_over(&tok, tok, tk_rpar);
+				expect_over(&tok, tok, tk_rpar);
 			break;
 
 			default: printf("default -> "); print_token(tok); break;
 		}
 
-		step_over(&tok, tok, tk_eos);
+		expect_over(&tok, tok, tk_eos);
 	}
 
 	
