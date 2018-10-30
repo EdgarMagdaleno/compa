@@ -17,7 +17,7 @@
 #define C_RST	"\e[0m"
 
 FILE *source, *out;
-int line = 1, col = 0, ch = ' ';
+int line = 1, col = 0, ch = ' ', current_label = 0;
 
 void error_exit(const char *msg) {
 	printf("[ERROR] %s\n", msg);
@@ -318,7 +318,7 @@ void parse_expr(struct token **tokens, struct token *tok,
 		switch(tok->type) {
 			case tk_id ... tk_lstr: chain(&output, &last, tok); break;
 			case tk_add ... tk_lese:
-				while (prec(peek(&output)) >= prec(tok))
+				while (peek(&operator) && prec(peek(&operator)) >= prec(tok))
 					chain(&output, &last, pop(&operator));
 
 				push(&operator, tok); 
@@ -428,7 +428,7 @@ void write_pop_id(struct ht_item *id) {
 	}
 }
 
-int parse_scope(struct token *tokens) {
+struct token *parse_scope(struct token *tokens) {
 	struct token *tok = tokens;
 	struct ht *scope = new_ht(HT_BUCKET_SIZE);
 
@@ -463,11 +463,33 @@ int parse_scope(struct token *tokens) {
 				write_pop_id(id);
 			} break;
 
-			case tk_if:
-			break;
+			case tk_if: {
+				if (!step_over(&tok, tok->next, tk_lpar))
+					break;
+
+				struct token *expr = NULL;
+				parse_expr(&tok, tok, &expr);
+				write_expr(expr);
+
+				if (!step_over(&tok, tok, tk_rpar))
+					break;
+
+				if (!step_over(&tok, tok, tk_lbrc))
+					break;
+
+				int label = current_label++;
+				writes("JMPC %i", label);
+				tok = parse_scope(tok);
+				writes("%i:", label);
+
+				if (!step_over(&tok, tok, tk_rbrc))
+					break;
+			} break;
+
+			case tk_rbrc: return tok; break;
 
 			case tk_rbrk:
-				
+				return tok;	
 			break;
 
 			case tk_prnt:
@@ -485,7 +507,7 @@ int parse_scope(struct token *tokens) {
 				step_over(&tok, tok, tk_rpar);
 			break;
 
-			default: printf("default\n"); print_token(tok); break;
+			default: printf("default -> "); print_token(tok); break;
 		}
 
 		step_over(&tok, tok, tk_eos);

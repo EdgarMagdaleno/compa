@@ -1,3 +1,5 @@
-double a = 10 / 6.0;
-a = a + 0.33334;
-print("Result: ", a, '\n');
+int a = 6;
+
+if (a <= 5) {
+	print("a is 5\n");
+};
