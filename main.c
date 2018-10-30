@@ -17,7 +17,6 @@
 #define C_RST	"\e[0m"
 
 FILE *source, *out;
-char vline[MAX_LINE_SIZE];
 int line = 1, col = 0, ch = ' ';
 
 void error_exit(const char *msg) {
@@ -350,20 +349,21 @@ ret:
 	last->next = NULL;
 }
 
-void write_decl(char *name, token_type type) {
-	switch(type) {
-		case tk_char: fprintf(out, "DCLC %s\n", name); break;
-		case tk_int: fprintf(out, "DCLI %s\n", name); break;
-		case tk_dobl: fprintf(out, "DCLD %s\n", name); break;
-		case tk_str: fprintf(out, "DCLS %s\n", name); break;
+void write_decl(struct ht_item *id) {
+	switch(id->type) {
+		case tk_char: fprintf(out, "DCLC %s\n", id->name); break;
+		case tk_int: fprintf(out, "DCLI %s\n", id->name); break;
+		case tk_dobl: fprintf(out, "DCLD %s\n", id->name); break;
+		case tk_str: fprintf(out, "DCLS %s\n", id->name); break;
 	}
 }
 
-void declare_id(struct ht *scope, char *name, token_type type) {
+struct ht_item *declare_id(struct ht *scope, struct token *tok, token_type type) {
 	struct ht_item *new_id = malloc(sizeof(struct ht_item));
-	new_id->name = name;
+	new_id->name = tok->s;
 	new_id->type = type;
 	ht_add(scope, new_id);
+	return new_id;
 }
 
 int step(struct token **tokens, struct token *tok, token_type type) {
@@ -419,12 +419,12 @@ void write_expr(struct token *expr) {
 	}
 }
 
-void write_pop_id(char *name, token_type type) {
-	switch(type) {
-		case tk_int: writes("POPI %s", name); break;
-		case tk_char: writes("POPC %s", name); break;
-		case tk_dobl: writes("POPD %s", name); break;
-		case tk_str: writes("POPS %s", name); break;
+void write_pop_id(struct ht_item *id) {
+	switch(id->type) {
+		case tk_int: writes("POPI %s", id->name); break;
+		case tk_char: writes("POPC %s", id->name); break;
+		case tk_dobl: writes("POPD %s", id->name); break;
+		case tk_str: writes("POPS %s", id->name); break;
 	}
 }
 
@@ -439,9 +439,8 @@ int parse_scope(struct token *tokens) {
 				if(!step(&tok, tok->next, tk_id))
 					break;
 				
-				char *name = tok->s;
-				write_decl(name, type);
-				declare_id(scope, name, type);
+				struct ht_item *id = declare_id(scope, tok, type);
+				write_decl(id);
 
 				if (!step_over(&tok, tok->next, tk_asg))
 					break;
@@ -449,7 +448,19 @@ int parse_scope(struct token *tokens) {
 				struct token *expr = NULL;
 				parse_expr(&tok, tok, &expr);
 				write_expr(expr);
-				write_pop_id(name, type);
+				write_pop_id(id);
+			} break;
+
+			case tk_id: {
+				struct ht_item *id = ht_get(scope, tok->s);
+
+				if (!step(&tok, tok->next, tk_asg))
+					break;
+				
+				struct token *expr = NULL;
+				parse_expr(&tok, tok->next, &expr);
+				write_expr(expr);
+				write_pop_id(id);
 			} break;
 
 			case tk_if:
