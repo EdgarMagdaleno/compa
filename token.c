@@ -24,10 +24,13 @@ void print_token(struct token *tok) {
 }
 
 void print_tokens(struct token *tokens) {
+	printf("- Tokens\n");
 	struct token *tok = tokens;
 
 	while (tok) {
 		print_token(tok);
 		tok = tok->next;
 	}
+
+	printf("\n");
 }

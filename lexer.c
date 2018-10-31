@@ -4,10 +4,10 @@
 #include <ctype.h>
 #include "token.h"
 #include "lexer.h"
+#include "source.h"
 
 #define MAX_WORD_SIZE	256
 
-FILE *source;
 int line = 1, col = 0, chr = ' ';
 
 struct {
@@ -164,8 +164,7 @@ struct token *get_token() {
 	return tok;
 }
 
-struct token *lex(FILE *_source) {
-	source = _source;
+struct token *lex() {
 	struct token *tok = get_token();
 	struct token *tokens = tok;
 

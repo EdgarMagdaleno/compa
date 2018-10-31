@@ -3,8 +3,7 @@
 #include "token.h"
 #include "ht.h"
 #include "writer.h"
-
-FILE *out;
+#include "out.h"
 
 void writes(const char *msg, ...) {
 	va_list arglist;
@@ -38,8 +37,4 @@ void write_pop_id(struct ht_item *id) {
 		case tk_vdbl: writes("POPSVD %s", id->name); break;
 		case tk_vstr: writes("POPSVS %s", id->name); break;
 	}
-}
-
-void set_out(FILE *out_p) {
-	out = out_p;
 }

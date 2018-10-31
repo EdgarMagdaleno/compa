@@ -1,5 +1,6 @@
 #include <stdio.h>
-#include "msg.h"
+#include "source.h"
+#include "out.h"
 #include "ht.h"
 #include "token.h"
 #include "ast.h"
@@ -8,16 +9,11 @@
 #include "parser.h"
 
 int main(int argc, char **args) {
-	FILE *source = fopen("example.auto", "r+");
-	if (!source)
-		error_exit("Invalid source file");
-	setvbuf(source, NULL, _IONBF, 0);
+	set_source("example.auto");
+	set_out("asm.we");
 	
-	struct token *tokens = lex(source);
-	printf("- Tokens\n");
+	struct token *tokens = lex();
 	print_tokens(tokens);
-	printf("\n");
-
-	//parse_scope(tokens);
+	new_tree("tree.txt");
 	return 0;
 }
