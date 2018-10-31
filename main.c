@@ -74,6 +74,12 @@ struct {
 	{"while",	tk_whle},
 }, *kw;
 
+struct {
+
+} ast_nodes[] = {
+
+}, *an;
+
 void print_token(struct token *tok) {
 	printf("%i %i %.8s", tok->line, tok->col, get_type_name(tok->type));
 	
@@ -299,15 +305,13 @@ void chain(struct token **list, struct token **last, struct token *tok) {
 	if (!*last) {
 		*list = tok;
 		*last = tok;
-		return;
+	} else {
+		(*last)->next = tok;
+		*last = (*last)->next;
 	}
-
- 	(*last)->next = tok;
-	*last = (*last)->next;
 }
 
-void parse_expr(struct token **tokens, struct token *tok,
-			   struct token **expr) {
+void parse_expr(struct token **tokens, struct token *tok) {
 	struct token *output = NULL;
 	struct token *last = NULL;
  	struct token *operator = NULL;
@@ -345,8 +349,29 @@ ext:
 
 ret:
 	*tokens = tok;
-	*expr = output;
 	last->next = NULL;
+
+	while (output) {
+		switch(output->type) {
+			case tk_lchr: writes("PUSHKC \'%s\'", output->s); break;
+			case tk_lint: writes("PUSHKI %i", output->i); break;
+			case tk_ldbl: writes("PUSHKD %lf", output->d); break;
+			case tk_lstr: writes("PUSHKS \"%s\"", output->s); break;
+			case tk_id: writes("PUSH %s", output->s); break;
+			case tk_add: writes("ADD"); break;
+			case tk_sub: writes("SUB"); break;
+			case tk_mul: writes("MUL"); break;
+			case tk_div: writes("DIV"); break;
+			case tk_eq: writes("CEQ"); break;
+			case tk_neq: writes("CNE"); break;
+			case tk_grt: writes("CGT"); break;
+			case tk_grte: writes("CGE"); break;
+			case tk_les: writes("CLT"); break;
+			case tk_lese: writes("CLE"); break;
+		}
+
+		output = output->next;
+	}
 }
 
 void write_decl(struct ht_item *id) {
@@ -399,30 +424,6 @@ int expect_over(struct token **tokens, struct token *tok, token_type type) {
 		
 }
 
-void write_expr(struct token *expr) {
-	while (expr) {
-		switch(expr->type) {
-			case tk_lchr: writes("PUSHKC \'%s\'", expr->s); break;
-			case tk_lint: writes("PUSHKI %i", expr->i); break;
-			case tk_ldbl: writes("PUSHKD %lf", expr->d); break;
-			case tk_lstr: writes("PUSHKS \"%s\"", expr->s); break;
-			case tk_id: writes("PUSH %s", expr->s); break;
-			case tk_add: writes("ADD"); break;
-			case tk_sub: writes("SUB"); break;
-			case tk_mul: writes("MUL"); break;
-			case tk_div: writes("DIV"); break;
-			case tk_eq: writes("CEQ"); break;
-			case tk_neq: writes("CNE"); break;
-			case tk_grt: writes("CGT"); break;
-			case tk_grte: writes("CGE"); break;
-			case tk_les: writes("CLT"); break;
-			case tk_lese: writes("CLE"); break;
-		}
-
-		expr = expr->next;
-	}
-}
-
 void write_pop_id(struct ht_item *id) {
 	switch(id->type) {
 		case tk_char: writes("POPC %s", id->name); break;
@@ -445,6 +446,20 @@ int step(struct token **tokens, struct token *tok, token_type type) {
 	return 1;
 }
 
+int parse_declare(struct token **tokens, struct token *tok) {
+	struct ht_item *id = NULL;
+	token_type id_type = tok->type;
+
+}
+
+int declaration() {
+	
+}
+
+int eval(struct token **tokens, ...) {
+	
+}
+
 struct token *parse_scope(struct token *tokens) {
 	struct token *tok = tokens;
 	struct ht *scope = new_ht(HT_BUCKET_SIZE);
@@ -452,46 +467,9 @@ struct token *parse_scope(struct token *tokens) {
 	while (tok) {
 		switch(tok->type) {
 			case tk_char ... tk_str: {
-				token_type type = tok->type;
-				struct token *expr = NULL;
-				struct ht_item *id = NULL;
-
-				if (!step(&tok, tok->next, tk_lbrk))
-					goto not_arr;
-				
-				tok = tok->next;
-				type += 4;
-				parse_expr(&tok, tok, &expr);
-				write_expr(expr);
-
-				if (!expect_over(&tok, tok, tk_rbrk))
+				if (parse_declare(&tok, tok))
 					break;
 
-				if (!expect(&tok, tok, tk_id))
-					break;
-				
-				id = declare_id(scope, tok, type);
-				write_decl(id);
-				tok = tok->next;
-				break;
-			not_arr:
-				if(!expect(&tok, tok, tk_id))
-					break;
-				
-				id = declare_id(scope, tok, type);
-				write_decl(id);
-
-				if (tok->next && tok->next->type == tk_eos) {
-					tok = tok->next;
-					break;
-				}
-
-				if (!expect_over(&tok, tok->next, tk_asg))
-					break;
-
-				parse_expr(&tok, tok, &expr);
-				write_expr(expr);
-				write_pop_id(id);
 			} break;
 
 			case tk_id: {
@@ -500,13 +478,10 @@ struct token *parse_scope(struct token *tokens) {
 				if(id->type < tk_vchr || id->type > tk_vstr)
 					goto cont;
 				
-				if (!step(&tok, tok->next, tk_lbrk))
-					goto not_arr;
+				if (!step(&tok, tok->next, tk_lbrk));
 				
-				struct token *expr = NULL;
 				tok = tok->next;
-				parse_expr(&tok, tok, &expr);
-				write_expr(expr);
+				parse_expr(&tok, tok);
 
 				if (!expect_over(&tok, tok, tk_rbrk))
 					break;
@@ -514,8 +489,7 @@ struct token *parse_scope(struct token *tokens) {
 				if (!expect(&tok, tok->next, tk_asg))
 					break;
 				
-				parse_expr(&tok, tok->next, &expr);
-				write_expr(expr);
+				parse_expr(&tok, tok->next);
 				write_pop_id(id);
 			} break;
 
@@ -523,9 +497,7 @@ struct token *parse_scope(struct token *tokens) {
 				if (!expect_over(&tok, tok->next, tk_lpar))
 					break;
 
-				struct token *expr = NULL;
-				parse_expr(&tok, tok, &expr);
-				write_expr(expr);
+				parse_expr(&tok, tok);
 
 				if (!expect_over(&tok, tok, tk_rpar))
 					break;
@@ -559,9 +531,7 @@ struct token *parse_scope(struct token *tokens) {
 
 				do {
 					tok = tok->next;
-					struct token *expr;
-					parse_expr(&tok, tok, &expr);
-					write_expr(expr);
+					parse_expr(&tok, tok);
 					writes("WRT");
 				} while (tok->type == tk_coma);
 
