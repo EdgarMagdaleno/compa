@@ -1,3 +1,6 @@
+#ifndef _HT_H_
+#define _HT_H_
+
 struct ht_item {
 	char *name;
 	int type;
@@ -16,3 +19,5 @@ void ht_del(struct ht *table, char *name);
 unsigned long hash(char *name);
 struct ht_item *first(struct ht *table);
 struct ht_item *next(struct ht *table, struct ht_item *current);
+
+#endif

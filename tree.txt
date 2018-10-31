@@ -1,0 +1,6 @@
+scope 1
+	decl 2
+		asg 1
+			expr 1
+				eos 0
+		eos 0
