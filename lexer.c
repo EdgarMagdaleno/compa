@@ -10,20 +10,6 @@
 
 int line = 1, col = 0, chr = ' ';
 
-struct {
-	char *s;
-	token_type type;
-} keywords[] = {
-	{"char",	tk_char},
-	{"double",	tk_dobl},
-	{"else",	tk_else},
-	{"if",		tk_if},
-	{"int",		tk_int},
-	{"print",	tk_prnt},
-	{"string",	tk_str},
-	{"while",	tk_whle},
-}, *kw;
-
 void getc_source() {
 	chr = getc(source);
 	col++;
@@ -60,18 +46,32 @@ struct token *number() {
 	return tok;
 }
 
-int comp(const void *a, const void *b) {
+int keyword_comp(const void *a, const void *b) {
 	return strcmp((char *) a, *(char **) b);
 }
 
 struct token *ident_or_kw() {
+	static struct {
+		char *s;
+		token_type type;
+	} keywords[] = {
+		{"char",	tk_char},
+		{"double",	tk_dobl},
+		{"else",	tk_else},
+		{"if",		tk_if},
+		{"int",		tk_int},
+		{"print",	tk_prnt},
+		{"string",	tk_str},
+		{"while",	tk_whle},
+	}, *kw;
+
 	struct token *tok = malloc(sizeof(struct token));
 	ungetc(chr, source);
 
 	char buf[MAX_WORD_SIZE];
 	fscanf(source, "%255[a-zA-Z0-9_]", buf);
 	tok->type = !(kw = bsearch(buf, keywords, sizeof(keywords) / sizeof(keywords[0]),
-				  sizeof(keywords[0]), comp)) ? tk_id : kw->type;
+				  sizeof(keywords[0]), keyword_comp)) ? tk_id : kw->type;
 
 	if (tok->type == tk_id) {
 		tok->s = malloc(strlen(buf));

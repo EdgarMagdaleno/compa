@@ -7,5 +7,6 @@ struct token *string_lit();
 struct token *new_token(token_type type);
 struct token *follow(token_type normal, token_type follow, char next);
 struct token *lex();
+int keyword_comp(const void *a, const void *b);
 
 #endif
