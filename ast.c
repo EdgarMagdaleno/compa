@@ -4,34 +4,7 @@
 #include "token.h"
 #include "ast.h"
 #include "msg.h"
-
-int asgn(struct token **current) {
-	return 0;
-}
-
-int decl(struct token **current) {
-	return 0;
-}
-
-int eos(struct token **current) {
-	return 0;
-}
-
-int expr(struct token **current) {
-	return 0;
-}
-
-int iden(struct token **current) {
-	return 0;
-}
-
-int prog(struct token **current) {
-	return 0;
-}
-
-int vind(struct token **current) {
-	return 0;
-}
+#include "parser.h"
 
 int tree_link_comp(const void *a, const void *b) {
 	return strcmp((char *) a, *(char **) b);
@@ -68,14 +41,14 @@ struct ast_node *build_tree(FILE *tree, int level) {
 		printf("    ");
 
 	struct ast_node *root = malloc(sizeof(struct ast_node));
-	root->parser = get_parser(buf);
-	root->parser(NULL);
+	root->parse = get_parser(buf);
 	printf("%s\n", buf);
 
 	root->branches_size = n;
 	root->branches = malloc(sizeof(struct ast_node));
 	for (int i = 0; i < root->branches_size; i++)
 		root->branches[i] = build_tree(tree, level + 1);
+	return root;
 }
 
 struct ast_node *new_tree(char *name) {
@@ -86,4 +59,5 @@ struct ast_node *new_tree(char *name) {
 	printf("- Tree\n");
 	struct ast_node *root = build_tree(tree, 0);
 	printf("\n");
+	return root;
 }

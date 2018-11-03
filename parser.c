@@ -1,13 +1,101 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include "msg.h"
 #include "ht.h"
 #include "writer.h"
 #include "token.h"
+#include "ast.h"
 #include "parser.h"
 
 #define HT_BUCKET_SIZE	256
+#define SAVE			1
+#define IGNR			0
 
+struct token *current = NULL;
+struct token *read = NULL;
+struct token *restore = NULL;
+struct ht_item *id = NULL;
 int current_label = 0;
+
+int expect_rng(token_type min, token_type max, int save) {
+	while (min <= max) {
+		if (current->type == min) {
+			if (save) read = current;
+			return 1;
+		}
+
+		min++;
+	}
+
+	return 0;
+}
+
+int expectt(token_type type, int save) {
+	if (current->type == type) {
+		if (save) current = read;
+		return 1;
+	}
+
+	return 0;
+}
+
+void stepp() {
+	current = current->next;
+}
+
+int asgn() {
+	if (!expectt(tk_asg, IGNR))
+		return 0;
+	return 1;
+}
+
+int declr_id() {
+	// id is in current
+	// type is in save
+}
+
+int decl() {
+	printf("decl ");
+	if (!expect_rng(tk_char, tk_str, SAVE))
+		return 0;
+
+	stepp();
+	if (!expectt(tk_id, IGNR))
+		return 0;
+
+	declr_id();
+	stepp();
+}
+
+int eos() {
+	printf("eos ");
+	restore = current;
+	if (!expectt(tk_eos, IGNR))
+		return 0;
+
+	stepp();
+	return 1;
+}
+
+int eosp() {
+	return 1;
+}
+
+int expr() {
+	return 1;
+}
+
+int iden() {
+	return 1;
+}
+
+int prog() {
+	return 1;
+}
+
+int vind() {
+	return 1;
+}
 
 int prec(struct token *tok) {
 	switch(tok->type) {
@@ -242,4 +330,28 @@ struct token *parse_scope(struct token *tokens) {
 	}
 
 	
+}
+
+int parse_recur(struct ast_node *node) {
+parse:
+	for (int i = 0; i < node->branches_size; i++) {
+		restore = current;
+		if (node->branches[i]->parse()) {
+			node = node->branches[i];
+			goto parse;
+		}
+		current = restore;
+	}
+
+	return 0;
+}
+
+void parse(struct token *tokens, struct ast_node *root) {
+	current = tokens;
+
+	while (current) {
+		parse_recur(root);
+		printf("\n");
+	}
+
 }

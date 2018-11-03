@@ -14,6 +14,8 @@ int main(int argc, char **args) {
 	
 	struct token *tokens = lex();
 	print_tokens(tokens);
-	new_tree("tree.txt");
+	struct ast_node *root = new_tree("tree.txt");
+	printf("root = %p\n", root);
+	parse(tokens, root);
 	return 0;
 }
