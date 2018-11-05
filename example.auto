@@ -1,2 +1,4 @@
-int a;
 int b;
+int a = 4 + 2 / 4;
+int[2] c;
+int k = 0;

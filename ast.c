@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "token.h"
+#include "ht.h"
 #include "ast.h"
 #include "msg.h"
 #include "parser.h"
@@ -16,12 +17,14 @@ parser_f get_parser(char *name) {
 		parser_f parser;
 	} links[] = {
 		{"asgn", asgn},
-		{"decl", decl},
 		{"eos", eos},
 		{"expr", expr},
-		{"iden", iden},
+		{"idn", idn},
+		{"lbrk", lbrk},
 		{"prog", prog},
-		{"vind", vind}
+		{"rbrk", rbrk},
+		{"type", type},
+		{"vidn", vidn}
 	}, *link;
 
 	link = bsearch(name, links, sizeof(links) / sizeof(links[0]),

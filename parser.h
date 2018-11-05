@@ -4,18 +4,20 @@
 int prec(struct token *tok);
 void push(struct token **stack, struct token *tok);
 struct token *pop(struct token **stack);
-struct token *peek(struct token **stack);
+struct token *top(struct token **stack);
 void chain(struct token **list, struct token **last, struct token *tok);
 void parse_expr(struct token **tokens, struct token *tok);
 struct token *parse_scope(struct token *tokens);
 void parse(struct token *tokens, struct ast_node *tree);
-int asgn();
-int decl();
-int eos();
-int eosp();
-int expr();
-int iden();
-int prog();
-int vind();
+int asgn(struct ht *scope);
+int type(struct ht *scope);
+int idn(struct ht *scope);
+int eos(struct ht *scope);
+int eosp(struct ht *scope);
+int expr(struct ht *scope);
+int prog(struct ht *scope);
+int vidn(struct ht *scope);
+int lbrk(struct ht *scope);
+int rbrk(struct ht *scope);
 
 #endif

@@ -1,16 +1,16 @@
 prog 2
-	decl 3
-		asgn 1
+	type 2
+		lbrk 1
 			expr 1
-				eos 0
-		vind 1
-			eos 0
-		eos 0
-	iden 2
-		asgn 1
-			expr 1
-				eos 0
-		vind 1
+				rbrk 1
+					vidn 1
+						eos 0
+		idn 2
 			asgn 1
 				expr 1
 					eos 0
+			eos 0
+	idn 1
+		asgn 1
+			expr 1
+				eos 0

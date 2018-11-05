@@ -15,7 +15,8 @@ int main(int argc, char **args) {
 	struct token *tokens = lex();
 	print_tokens(tokens);
 	struct ast_node *root = new_tree("tree.txt");
-	printf("root = %p\n", root);
+	printf("- Statements\n");
 	parse(tokens, root);
+	printf("\n");
 	return 0;
 }
