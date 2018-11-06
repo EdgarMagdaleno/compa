@@ -3,5 +3,6 @@
 
 extern FILE *source;
 void set_source(char *name);
+void error_exit(const char *msg);
 
 #endif

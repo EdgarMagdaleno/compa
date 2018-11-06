@@ -5,7 +5,11 @@
 #include "writer.h"
 #include "out.h"
 
+int err = 0;
+
 void writes(const char *msg, ...) {
+	if (err) return;
+
 	va_list arglist;
 	va_start(arglist, msg);
 	vfprintf(out, msg, arglist);
@@ -13,7 +17,9 @@ void writes(const char *msg, ...) {
 	fprintf(out, "\n");
 }
 
-void write_decl(struct ht_item *id) {
+void writes_decl(struct ht_item *id) {
+	if (err) return; 
+
 	switch(id->type) {
 		case tk_char: fprintf(out, "DCLC %s\n", id->name); break;
 		case tk_int: fprintf(out, "DCLI %s\n", id->name); break;
@@ -26,7 +32,9 @@ void write_decl(struct ht_item *id) {
 	}
 }
 
-void write_pop_id(struct ht_item *id) {
+void writes_pop_id(struct ht_item *id) {
+	if (err) return;
+
 	switch(id->type) {
 		case tk_char: writes("POPC %s", id->name); break;
 		case tk_int: writes("POPI %s", id->name); break;
@@ -36,5 +44,14 @@ void write_pop_id(struct ht_item *id) {
 		case tk_vint: writes("POPVI %s", id->name); break;
 		case tk_vdbl: writes("POPSVD %s", id->name); break;
 		case tk_vstr: writes("POPSVS %s", id->name); break;
+	}
+}
+
+void writes_push(struct ht_item *id) {
+	if (err) return;
+
+	switch(id->type) {
+		case tk_char ... tk_str: writes("PUSH %s", id->name); break;
+		case tk_vchr ... tk_vstr: writes("PUSHV %s", id->name); break;
 	}
 }

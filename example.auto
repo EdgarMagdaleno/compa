@@ -1,4 +1,6 @@
-int b;
-int a = 4 + 2 / 4;
-int[2] c;
-int k = 0;
+int b[10];
+int a[1];
+a[0] = 3;
+b[2] = 1;
+b[4] = 9999;
+print("res: ", b[a[0] + 1], '\n');

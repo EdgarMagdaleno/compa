@@ -6,9 +6,12 @@
 #include "token.h"
 #include "ast.h"
 #include "parser.h"
+#include "source.h"
 
+#define MAX_LINE_SIZE	256
 #define HT_BUCKET_SIZE	256
 #define DFS_STACK_SIZE	64
+#define VECTOR_DIFF		4
 #define SAVE			1
 #define IGNR			0
 
@@ -44,69 +47,134 @@ void step() {
 	current = current->next;
 }
 
+int decl(struct ht *scope) {
+	if (!expect_rng(tk_char, tk_str, SAVE))
+		return tk_type;
+
+	step();
+	if (!expect(tk_id, IGNR))
+		return tk_id;
+
+	if (ht_get(scope, current->s))
+		return -RDCL;
+		
+	id = malloc(sizeof(struct ht_item));
+	id->name = current->s;
+	id->type = save->type;
+	step();
+
+	if (current->type == tk_lbrk)
+		id->type += VECTOR_DIFF;
+	else {
+		writes_decl(id);
+		ht_add(scope, id);
+	}
+
+	printf("decl ");
+	return 0;
+}
+
 int asgn(struct ht *scope) {
 	if (!expect(tk_asg, IGNR))
-		return 0;
+		return tk_asg;
 
 	step();
 	printf("asgn ");
-	return 1;
+	return 0;
 }
 
-int type(struct ht *scope) {
-	if (!expect_rng(tk_char, tk_str, SAVE))
-		return 0;
-
+int prnt(struct ht *scope) {
+	if (!expect(tk_prnt, IGNR))
+		return tk_prnt;
+	
 	step();
-	printf("type ");
-	return 1;
+	printf("prnt ");
+	return 0;
+}
+
+int lpar(struct ht *scope) {
+	if (!expect(tk_lpar, IGNR))
+		return tk_lpar;
+	
+	step();
+	printf("lpar ");
+	return 0;
+}
+
+int rpar(struct ht *scope) {
+	if (!expect(tk_rpar, IGNR))
+		return tk_rpar;
+	
+	step();
+	printf("rpar ");
+	return 0;
 }
 
 int idn(struct ht *scope) {
 	if (!expect(tk_id, IGNR))
-		return 0;
+		return tk_id;
 
-	if (!save)
-		goto out;
+	id = ht_get(scope, current->s);
+	if (!id)
+		return -NDCL;
+	
+	if (!is_vector(id))
+		goto cont;
+	
+	step();
+	if (!expect(tk_lbrk, IGNR))
+		return tk_lbrk;
+	
+	step();
+	int err_code = expr(scope);
+	if (err_code)
+		return err_code;
 
-	id = malloc(sizeof(struct ht_item));
-	id->name = current->s;
-	id->type = save->type;
-	ht_add(scope, id);
-
-out:
-
+	if (!expect(tk_rbrk, IGNR))
+		return tk_rbrk;
+cont:
 	step();
 	printf("idn ");
-	return 1;
-}
-
-int vidn(struct ht *scope) {
-	if (!expect(tk_id, IGNR))
-		return 0;
-
-	id = malloc(sizeof(struct ht_item));
-	id->name = current->s;
-	id->type = save->type + 4;
-	ht_add(scope, id);
-
-	step();
-	printf("vidn ");
-	return 1;
+	return 0;
 }
 
 int eos(struct ht *scope) {
 	if (!expect(tk_eos, IGNR))
-		return 0;
+		return tk_eos;
 
 	step();
 	printf("eos ");
-	return 1;
+	return 0;
 }
 
 int eosp(struct ht *scope) {
+	if (!expect(tk_eos, IGNR))
+		return tk_eos;
+	step();
+	
+	writes_pop_id(id);
 	printf("eosp ");
-	return 1;
+	return 0;
+}
+
+int exrl(struct ht *scope) {
+parse:
+	expr(scope);
+	writes("WRT");
+
+	if (current->type == tk_coma) {
+		step();
+		goto parse;
+	}
+
+	return 0;
+}
+
+int is_vector(struct ht_item *item) {
+	switch(item->type) {
+		case tk_vchr ... tk_vstr: return 1; break;
+		default: return 0; break;
+	}
 }
 
 int expr(struct ht *scope) {
@@ -123,9 +191,30 @@ int expr(struct ht *scope) {
 			break;
 
 			case tk_id: {
+				struct token *backup = current;
 				struct ht_item *iden = ht_get(scope, current->s);
-				if (!ht_get(scope, current->s))
-					return 1;
+				if (!iden)
+					return -NDCL;
+
+				if (!is_vector(iden))
+					goto cont;
+				step();
+
+				if (!expect(tk_lbrk, IGNR))
+					return tk_lbrk;
+				step();
+
+				int err_code = expr(scope);
+				if (err_code)
+					return err_code;
+
+				if (!expect(tk_rbrk, IGNR))
+					return tk_rbrk;
+				step();
+
+				next = current;
+			cont:
+				chain(&output, &last, backup);
 			} break;
 
 			case tk_add ... tk_lese:
@@ -156,13 +245,19 @@ out:
 	while (top(&operator))
 		chain(&output, &last, pop(&operator));
 
+	last->next = NULL;
 	while (output) {
 		switch(output->type) {
 			case tk_lchr: writes("PUSHKC \'%s\'", output->s); break;
 			case tk_lint: writes("PUSHKI %i", output->i); break;
 			case tk_ldbl: writes("PUSHKD %lf", output->d); break;
 			case tk_lstr: writes("PUSHKS \"%s\"", output->s); break;
-			case tk_id: writes("PUSH %s", output->s); break;
+			case tk_id:
+				if (is_vector(ht_get(scope, output->s)))
+					writes("PUSHV %s", output->s);
+				else
+					writes("PUSH %s", output->s);
+			break;
 			case tk_add: writes("ADD"); break;
 			case tk_sub: writes("SUB"); break;
 			case tk_mul: writes("MUL"); break;
@@ -179,32 +274,35 @@ out:
 	}
 
 	printf("expr ");
-	return 1;
+	return 0;
 }
 
 int prog(struct ht *scope) {
-	return 1;
+	return 0;
 }
 
 int lbrk(struct ht *scope) {
-	if (save)
-		save->type += 4;
-
 	if (!expect(tk_lbrk, IGNR))
-		return 0;
+		return tk_lbrk;
 
 	step();
 	printf("lbrk ");
-	return 1;
+	return 0;
 }
 
 int rbrk(struct ht *scope) {
 	if (!expect(tk_rbrk, IGNR))
-		return 0;
+		return tk_rbrk;
 
 	step();
+
+	if (!ht_get(scope, id->name)) {
+		writes_decl(id);
+		ht_add(scope, id);
+	}
+
 	printf("rbrk ");
-	return 1;
+	return 0;
 }
 
 int prec(struct token *tok) {
@@ -336,36 +434,46 @@ struct token *parse_scope(struct token *tokens) {
 
 int preorder(struct ast_node *node, struct ht *scope) {
 	int res = 0;
-	if (!node)
-		return 1;
 
 	restore = current;
 	res = node->parse(scope);
-	if (!res) {
+	if (res) {
 		current = restore;
-		return 0;
+		return res;
 	}
 
 	if (node->branches_size == 0)
-		return 1;
+		return 0;
 
 	printf("-> ");
 	for (int i = 0; i < node->branches_size; i++) {
 		res = preorder(node->branches[i], scope);
-		if (res)
-			return 1;
+		if (!res)
+			return res;
 	}
 
-	return 0;
+	return res;
 }
 
 void parse(struct token *tokens, struct ast_node *root) {
 	struct ht *scope = new_ht(HT_BUCKET_SIZE);
+	int err_code = 0;
 	current = tokens;
 
 	while (current) {
 		printf("prog ");
-		preorder(root, scope);
+
+		err_code = preorder(root, scope);
+		if (err_code) {
+			print_token(current);
+			err = 1;
+
+			error_log(current, err_code);
+			while (current->type != tk_eos)
+				current = current->next;
+			step();
+
+		}
 		printf("\n");
 	}
 }

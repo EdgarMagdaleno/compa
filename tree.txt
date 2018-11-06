@@ -1,16 +1,19 @@
-prog 2
-	type 2
+prog 3
+	decl 3
 		lbrk 1
 			expr 1
 				rbrk 1
-					vidn 1
-						eos 0
-		idn 2
-			asgn 1
-				expr 1
 					eos 0
-			eos 0
+		asgn 1
+			expr 1
+				eosp 0
+		eos 0
 	idn 1
 		asgn 1
 			expr 1
-				eos 0
+				eosp 0
+	prnt 1
+		lpar 1
+			exrl 1
+				rpar 1
+					eos 0

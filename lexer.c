@@ -5,16 +5,19 @@
 #include "token.h"
 #include "lexer.h"
 #include "source.h"
+#include "out.h"
 
 #define MAX_WORD_SIZE	256
 
 int line = 1, col = 0, chr = ' ';
+long line_offset = 0;
 
 void getc_source() {
 	chr = getc(source);
 	col++;
 
 	if (chr == '\n') {
+		line_offset = ftell(source);
 		line++;
 		col = 0;
 	}
@@ -43,6 +46,7 @@ struct token *number() {
 		tok->i = atoi(buf);
 	}
 
+	col--;
 	return tok;
 }
 
@@ -73,11 +77,13 @@ struct token *ident_or_kw() {
 	tok->type = !(kw = bsearch(buf, keywords, sizeof(keywords) / sizeof(keywords[0]),
 				  sizeof(keywords[0]), keyword_comp)) ? tk_id : kw->type;
 
+	int len = strlen(buf);
 	if (tok->type == tk_id) {
-		tok->s = malloc(strlen(buf));
+		tok->s = malloc(len);
 		strcpy(tok->s, buf);
 	}
 
+	col += len - 1;
 	return tok;
 }
 
@@ -130,6 +136,7 @@ struct token *get_token() {
 
 	int tok_line = line;
 	int tok_col = col;
+	long tok_line_offset = line_offset;
 	switch(chr) {
 		case '=': tok = follow(tk_asg, tk_eq, '='); break;
 		case '>': tok = follow(tk_grt, tk_grte, '='); break;
@@ -158,6 +165,7 @@ struct token *get_token() {
 	if (tok) {
 		tok->line = tok_line;
 		tok->col = tok_col;
+		tok->line_offset = tok_line_offset;
 		getc_source();
 	}
 
