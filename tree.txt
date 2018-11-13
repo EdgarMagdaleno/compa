@@ -1,4 +1,9 @@
-prog 3
+prog 4
+	ifs 1
+		lpar 1
+			expr 1
+				rpar 1
+					scpe 0
 	decl 3
 		lbrk 1
 			expr 1

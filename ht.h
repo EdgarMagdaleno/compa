@@ -1,6 +1,9 @@
 #ifndef _HT_H_
 #define _HT_H_
 
+#include <stdlib.h>
+#include <string.h>
+
 struct ht_item {
 	char *name;
 	int type;

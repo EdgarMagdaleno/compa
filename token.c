@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include "token.h"
 
 char *get_type_name(token_type type) {
@@ -33,4 +32,11 @@ void print_tokens(struct token *tokens) {
 	}
 
 	printf("\n");
+}
+
+int is_vector(int type) {
+	switch(type) {
+		case tk_vchr ... tk_vstr: return 1; break;
+		default: return 0; break;
+	}
 }

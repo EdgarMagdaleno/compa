@@ -1,5 +1,3 @@
-#include <stdlib.h>
-#include <string.h>
 #include "ht.h"
 
 struct ht *new_ht(int size) {

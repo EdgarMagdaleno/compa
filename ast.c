@@ -28,7 +28,8 @@ parser_f get_parser(char *name) {
 		{"prnt", prnt},
 		{"prog", prog},
 		{"rbrk", rbrk},
-		{"rpar", rpar}
+		{"rpar", rpar},
+		{"scpe", scpe}
 	}, *link;
 
 	link = bsearch(name, links, sizeof(links) / sizeof(links[0]),

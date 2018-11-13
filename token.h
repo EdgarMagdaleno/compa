@@ -1,6 +1,9 @@
 #ifndef _TOKEN_H_
 #define _TOKEN_H_
 
+#include <stdio.h>
+#include "ht.h"
+
 #define RDCL	1
 #define NDCL	2
 #define EOT		3
@@ -28,5 +31,6 @@ struct token {
 char *get_type_name(token_type type);
 void print_token(struct token *tok);
 void print_tokens(struct token *tokens);
+int is_vector(int type);
 
 #endif

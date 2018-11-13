@@ -19,6 +19,7 @@ struct token *current = NULL;
 struct token *save = NULL;
 struct token *restore = NULL;
 struct ht_item *id = NULL;
+struct ast_node *root = NULL;
 int current_label = 0;
 
 int expect_rng(token_type min, token_type max, int save_read) {
@@ -118,7 +119,7 @@ int idn(struct ht *scope) {
 	if (!id)
 		return -NDCL;
 	
-	if (!is_vector(id))
+	if (!is_vector(id->type))
 		goto cont;
 	
 	step();
@@ -170,16 +171,7 @@ parse:
 	return 0;
 }
 
-int is_vector(struct ht_item *item) {
-	switch(item->type) {
-		case tk_vchr ... tk_vstr: return 1; break;
-		default: return 0; break;
-	}
-}
-
 int expr(struct ht *scope) {
-	struct token *output = NULL;
-	struct token *last = NULL;
 	struct token *operator = NULL;
 	struct token *next = NULL;
 
@@ -187,16 +179,15 @@ int expr(struct ht *scope) {
 		next = current->next;
 		switch(current->type) {
 			case tk_lchr ... tk_lstr:
-				chain(&output, &last, current);
+				writes_token(current);
 			break;
 
 			case tk_id: {
-				struct token *backup = current;
-				struct ht_item *iden = ht_get(scope, current->s);
-				if (!iden)
+				struct ht_item *id_local = ht_get(scope, current->s);
+				if (!id_local)
 					return -NDCL;
 
-				if (!is_vector(iden))
+				if (!is_vector(id_local->type))
 					goto cont;
 				step();
 
@@ -214,12 +205,12 @@ int expr(struct ht *scope) {
 
 				next = current;
 			cont:
-				chain(&output, &last, backup);
+				writes_id(id_local);
 			} break;
 
 			case tk_add ... tk_lese:
 				while (top(&operator) && prec(top(&operator)) >= prec(current))
-					chain(&output, &last, pop(&operator));
+					writes_token(pop(&operator));
 
 				push(&operator, current);
 			break;
@@ -227,7 +218,7 @@ int expr(struct ht *scope) {
 			case tk_lpar: push(&operator, current); break;
 			case tk_rpar:
 				while (top(&operator) && top(&operator)->type != tk_lpar)
-					chain(&output, &last, pop(&operator));
+					writes_token(pop(&operator));
 
 				if (!top(&operator))
 					goto out;
@@ -243,41 +234,41 @@ int expr(struct ht *scope) {
 
 out:
 	while (top(&operator))
-		chain(&output, &last, pop(&operator));
-
-	last->next = NULL;
-	while (output) {
-		switch(output->type) {
-			case tk_lchr: writes("PUSHKC \'%s\'", output->s); break;
-			case tk_lint: writes("PUSHKI %i", output->i); break;
-			case tk_ldbl: writes("PUSHKD %lf", output->d); break;
-			case tk_lstr: writes("PUSHKS \"%s\"", output->s); break;
-			case tk_id:
-				if (is_vector(ht_get(scope, output->s)))
-					writes("PUSHV %s", output->s);
-				else
-					writes("PUSH %s", output->s);
-			break;
-			case tk_add: writes("ADD"); break;
-			case tk_sub: writes("SUB"); break;
-			case tk_mul: writes("MUL"); break;
-			case tk_div: writes("DIV"); break;
-			case tk_eq: writes("CEQ"); break;
-			case tk_neq: writes("CNE"); break;
-			case tk_grt: writes("CGT"); break;
-			case tk_grte: writes("CGE"); break;
-			case tk_les: writes("CLT"); break;
-			case tk_lese: writes("CLE"); break;
-		}
-
-		output = output->next;
-	}
+		writes_token(pop(&operator));
 
 	printf("expr ");
 	return 0;
 }
 
 int prog(struct ht *scope) {
+	return 0;
+}
+
+int ifs(struct ht *scope) {
+
+	return 0;
+}
+
+int scpe(struct ht *scope) {
+	struct ht *new_scope = new_ht(HT_BUCKET_SIZE);
+	int err_code;
+
+	while (current) {
+		printf("scpe ");
+
+		err_code = preorder(root, scope);
+		if (err_code) {
+			print_token(current);
+			err = 1;
+
+			error_log(current, err_code);
+			while (current->type != tk_eos)
+				current = current->next;
+			step();
+
+		}
+		printf("\n");
+	}
 	return 0;
 }
 
