@@ -62,9 +62,11 @@ struct token *ident_or_kw() {
 		{"char",	tk_char},
 		{"double",	tk_dobl},
 		{"else",	tk_else},
+		{"for",		tk_for},
 		{"if",		tk_if},
 		{"int",		tk_int},
 		{"print",	tk_prnt},
+		{"read",	tk_read},
 		{"string",	tk_str},
 		{"while",	tk_whle},
 	}, *kw;

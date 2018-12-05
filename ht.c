@@ -1,8 +1,15 @@
 #include "ht.h"
+#include "msg.h"
+#include "writer.h"
 
 struct ht *new_ht(int size) {
 	struct ht *table = malloc(sizeof(struct ht));
 	table->bucket_size = size;
+	table->while_label = -1;
+	table->if_label = -1;
+	table->for_label = -1;
+	table->for_end = -1;
+	table->for_stm = NULL;
 	table->bucket = calloc(table->bucket_size, sizeof(struct ht_item *));
 
 	return table;
@@ -40,6 +47,7 @@ void ht_del(struct ht *table, char *name) {
 	int index = hash(name) % table->bucket_size;
 	struct ht_item *current = table->bucket[index];
 
+	log_msg("\tht_del: %s\n", name);
 	if (current && strcmp(current->name, name) == 0) {
 		table->bucket[index] = current->next;
 		return;
@@ -53,6 +61,7 @@ void ht_del(struct ht *table, char *name) {
 
 		current = current->next;
 	}
+
 }
 
 unsigned long hash(char *name) {
@@ -89,4 +98,19 @@ struct ht_item *next(struct ht *table, struct ht_item *current) {
 	}
 
 	return NULL;
+}
+
+void clear_scope(struct ht *scope, int scope_id) {
+	log_msg("\nclear_scope\n\n");
+	struct ht_item *item = first(scope);
+	struct ht_item *_next;
+
+	while (item) {
+		_next = next(scope, item);
+		if (item->scope_id == scope_id) {
+			ht_del(scope, item->name);
+			writes("FREE %s", item->name);
+		}
+		item = _next;
+	}
 }

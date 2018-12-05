@@ -1,21 +1,37 @@
-prog 5
-	eos 0
+prog 7
 	ifs 1
 		lpar 1
 			expr 1
 				rpar 1
 					lbrc 1
 						scpe 1
-							eos 0
-	decl 3
-		lbrk 1
+							rbrc 1
+								eos 0
+	whle 1
+		lpar 1
 			expr 1
-				rbrk 1
-					eos 0
-		asgn 1
-			expr 1
-				eosp 0
-		eos 0
+				rpar 1
+					lbrc 1
+						scpe 1
+							rbrc 1
+								eos 0
+	for 1
+		lpar 1
+			decl 1
+				asgn 1
+					expr 1
+						eosp 1
+							for_cnd 1
+								expr 1
+									eos 1
+										for_j 1
+											for_st 1
+												rpar 1
+													lbrc 1
+														scpe 1
+															for_end 1
+																rbrc 1
+																	eos 0
 	idn 1
 		asgn 1
 			expr 1
@@ -25,3 +41,17 @@ prog 5
 			exrl 1
 				rpar 1
 					eos 0
+	read 1
+		lpar 1
+			idn 1
+				rpar 1
+					eosr 0
+	decl 3
+		lbrk 1
+			expr 1
+				rbrk 1
+					eos 0
+		asgn 1
+			expr 1
+				eosp 0
+		eos 0

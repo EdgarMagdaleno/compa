@@ -19,11 +19,15 @@ void error_exit(const char *msg) {
 }
 
 void error_log(struct token *tok, int err_code) {
-	err = 1;
+	err = 0;
 	printf("\n");
 	va_list arglist;
 	printf(C_RED"[ERROR] %i,%i "C_RST, tok->line, tok->col);
-	printf("err_code: %i\n", err_code);
+	if (err_code >= 0)
+		printf("expected %.8s\n", get_type_name(err_code));
+	else {
+		printf("NIGGGEEER");
+	}
 
 	fseek(source, tok->line_offset, SEEK_SET);
 	char line[MAX_LINE_SIZE];

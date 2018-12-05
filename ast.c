@@ -20,8 +20,15 @@ parser_f get_parser(char *name) {
 		{"decl", decl},
 		{"eos", eos},
 		{"eosp", eosp},
+		{"eosp_", _eosp},
+		{"eosr", eosr},
 		{"expr", expr},
 		{"exrl", exrl},
+		{"for", _for},
+		{"for_cnd", f_cnd},
+		{"for_end", for_end},
+		{"for_j", for_j},
+		{"for_st", for_st},
 		{"idn", idn},
 		{"ifs", ifs},
 		{"lbrc", lbrc},
@@ -31,8 +38,10 @@ parser_f get_parser(char *name) {
 		{"prog", prog},
 		{"rbrc", rbrc},
 		{"rbrk", rbrk},
+		{"read", read},
 		{"rpar", rpar},
-		{"scpe", scpe}
+		{"scpe", scpe},
+		{"whle", whle},
 	}, *link;
 
 	link = bsearch(name, links, sizeof(links) / sizeof(links[0]),
@@ -48,16 +57,16 @@ struct ast_node *build_tree(FILE *tree, int level) {
 	int n;
 	fscanf(tree, "%s %i", buf, &n);
 
-	for (int i = 0; i < level; i++)
-		log_msg("    ");
+	//for (int i = 0; i < level; i++)
+		//log_msg("    ");
 
 	struct ast_node *root = malloc(sizeof(struct ast_node));
-	log_msg(buf);
-	log_msg("\n");
+	//log_msg(buf);
+	//log_msg("\n");
 	root->parse = get_parser(buf);
 
 	root->branches_size = n;
-	root->branches = malloc(sizeof(struct ast_node));
+	root->branches = malloc(sizeof(struct ast_node) * n);
 	for (int i = 0; i < root->branches_size; i++)
 		root->branches[i] = build_tree(tree, level + 1);
 	return root;

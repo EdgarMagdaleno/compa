@@ -1,0 +1,114 @@
+PUSHKI 10
+DCLVS matriculas
+DCLI i
+PUSHKI 0
+POPI i
+0:
+PUSH i
+PUSHKI 10
+CLT
+JMPC 1
+PUSHKS "Matricula ["
+WRT
+PUSH i
+PUSHKI 1
+ADD
+WRT
+PUSHKS "]: "
+WRT
+PUSH i
+RDS
+POPVS matriculas
+PUSH i
+PUSHKI 1
+ADD
+POPI i
+JMP 0
+1:
+DCLI p
+PUSHKI 0
+POPI p
+DCLI j
+PUSHKI 0
+POPI j
+DCLI temp
+PUSHKI 0
+POPI temp
+DCLI temp2
+PUSHKI 0
+POPI temp2
+2:
+PUSH p
+PUSHKI 10
+CLT
+JMPC 3
+PUSHKI 1
+POPI j
+4:
+PUSH j
+PUSHKI 9
+CLT
+JMPC 5
+PUSH j
+PUSHKI 1
+SUB
+PUSHV matriculas
+PUSH j
+PUSHV matriculas
+CGT
+JMPC 6
+PUSH j
+PUSHKI 1
+SUB
+PUSHV matriculas
+POPI temp
+PUSH j
+PUSHKI 1
+SUB
+PUSH j
+PUSHV matriculas
+POPVS matriculas
+PUSH j
+PUSH temp
+POPVS matriculas
+6:
+PUSH j
+PUSHKI 1
+ADD
+POPI j
+JMP 4
+5:
+PUSH p
+PUSHKI 1
+ADD
+POPI p
+JMP 2
+3:
+DCLI x
+PUSHKI 0
+POPI x
+7:
+PUSH x
+PUSHKI 10
+CLT
+JMPC 8
+PUSHKS "Matricula ["
+WRT
+PUSH x
+PUSHKI 1
+ADD
+WRT
+PUSHKS "]: "
+WRT
+PUSH x
+PUSHV matriculas
+WRT
+PUSHKS "\n"
+WRT
+PUSH x
+PUSHKI 1
+ADD
+POPI x
+JMP 7
+8:
+EXT

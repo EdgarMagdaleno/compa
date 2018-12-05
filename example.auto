@@ -1,8 +1,31 @@
-int b[10];
-int a[1];
-a[0] = 3;
-a[1] = 1;
-b[5] = 9999;
-int c = 0;
-print("res: ", b[a[0] + ((a[1] + 1) + 2) / 2], '\n');
-print;
+string matriculas[10];
+
+for (int i = 0; i < 10; i = i + 1) {
+	print("Matricula [", i + 1, "]: ");
+	read(matriculas[i]);
+};
+
+int p = 0;
+int j = 0;
+int temp = 0;
+int temp2 = 0;
+while (p < 10) {
+
+	j = 1;
+	while (j < 9) {
+		if (matriculas[j - 1] > matriculas[j]) {
+			temp = matriculas[j - 1];
+			matriculas[j - 1] = matriculas[j];
+			matriculas[j] = temp;
+		};
+
+		j = j + 1;
+	};
+
+	p = p + 1;
+};
+
+for (int x = 0; x < 10; x = x + 1) {
+	print("Matricula [", x + 1, "]: ", matriculas[x]);
+	print("\n");
+};

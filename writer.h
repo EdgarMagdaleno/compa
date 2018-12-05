@@ -15,5 +15,6 @@ void writes_decl(struct ht_item *id);
 void writes_pop_id(struct ht_item *id);
 void writes_push(struct ht_item *id);
 void writes_token(struct token *tok);
+void writes_label(int label);
 
 #endif

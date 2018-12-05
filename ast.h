@@ -1,7 +1,7 @@
 #ifndef _AST_H_
 #define _AST_H_
 
-typedef int (*parser_f)(struct ht *scope);
+typedef int (*parser_f)();
 
 struct ast_node {
 	parser_f parse;

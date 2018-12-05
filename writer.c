@@ -37,8 +37,8 @@ void writes_pop_id(struct ht_item *id) {
 		case tk_str: writes("POPS %s", id->name); break;
 		case tk_vchr: writes("POPVC %s", id->name); break;
 		case tk_vint: writes("POPVI %s", id->name); break;
-		case tk_vdbl: writes("POPSVD %s", id->name); break;
-		case tk_vstr: writes("POPSVS %s", id->name); break;
+		case tk_vdbl: writes("POPVD %s", id->name); break;
+		case tk_vstr: writes("POPVS %s", id->name); break;
 	}
 }
 
@@ -77,4 +77,10 @@ void writes_token(struct token *tok) {
 		case tk_les: writes("CLT"); break;
 		case tk_lese: writes("CLE"); break;
 	}
+}
+
+void writes_label(int label) {
+	char buf[64];
+	sprintf(buf, "%i", label);
+	writes("%s:", buf);
 }

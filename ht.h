@@ -7,11 +7,18 @@
 struct ht_item {
 	char *name;
 	int type;
+	int scope_id;
 	struct ht_item *next;
 };
 
 struct ht {
 	int bucket_size;
+	int if_label;
+	int while_label;
+	int for_label;
+	int for_cond;
+	int for_end;
+	void *for_stm;
 	struct ht_item **bucket;
 };
 
@@ -22,5 +29,6 @@ void ht_del(struct ht *table, char *name);
 unsigned long hash(char *name);
 struct ht_item *first(struct ht *table);
 struct ht_item *next(struct ht *table, struct ht_item *current);
+void clear_scope(struct ht *table, int scope_id);
 
 #endif
