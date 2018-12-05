@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 #include "msg.h"
 #include "ht.h"
 #include "writer.h"
@@ -23,6 +24,9 @@ struct ast_node *root = NULL;
 int current_label = 0;
 
 int expect_rng(token_type min, token_type max, int save_read) {
+	if (!current)
+		return 0;
+
 	while (min <= max) {
 		if (current->type == min) {
 			if (save_read) save = current;
@@ -36,6 +40,9 @@ int expect_rng(token_type min, token_type max, int save_read) {
 }
 
 int expect(token_type type, int save_read) {
+	if (!current)
+		return 0;
+
 	if (current->type == type) {
 		if (save_read) save = current;
 		return 1;
@@ -45,7 +52,8 @@ int expect(token_type type, int save_read) {
 }
 
 void step() {
-	current = current->next;
+	if (current)
+		current = current->next;
 }
 
 int decl(struct ht *scope) {
@@ -71,7 +79,7 @@ int decl(struct ht *scope) {
 		ht_add(scope, id);
 	}
 
-	printf("decl ");
+	log_msg("decl ");
 	return 0;
 }
 
@@ -80,7 +88,7 @@ int asgn(struct ht *scope) {
 		return tk_asg;
 
 	step();
-	printf("asgn ");
+	log_msg("asgn ");
 	return 0;
 }
 
@@ -89,7 +97,7 @@ int prnt(struct ht *scope) {
 		return tk_prnt;
 	
 	step();
-	printf("prnt ");
+	log_msg("prnt ");
 	return 0;
 }
 
@@ -98,7 +106,7 @@ int lpar(struct ht *scope) {
 		return tk_lpar;
 	
 	step();
-	printf("lpar ");
+	log_msg("lpar ");
 	return 0;
 }
 
@@ -107,7 +115,7 @@ int rpar(struct ht *scope) {
 		return tk_rpar;
 	
 	step();
-	printf("rpar ");
+	log_msg("rpar ");
 	return 0;
 }
 
@@ -135,7 +143,7 @@ int idn(struct ht *scope) {
 		return tk_rbrk;
 cont:
 	step();
-	printf("idn ");
+	log_msg("idn ");
 	return 0;
 }
 
@@ -144,7 +152,7 @@ int eos(struct ht *scope) {
 		return tk_eos;
 
 	step();
-	printf("eos ");
+	log_msg("eos ");
 	return 0;
 }
 
@@ -154,11 +162,13 @@ int eosp(struct ht *scope) {
 	step();
 	
 	writes_pop_id(id);
-	printf("eosp ");
+	log_msg("eosp ");
 	return 0;
 }
 
 int exrl(struct ht *scope) {
+	if (!current)
+		return 0;
 parse:
 	expr(scope);
 	writes("WRT");
@@ -236,7 +246,7 @@ out:
 	while (top(&operator))
 		writes_token(pop(&operator));
 
-	printf("expr ");
+	log_msg("expr ");
 	return 0;
 }
 
@@ -245,7 +255,9 @@ int prog(struct ht *scope) {
 }
 
 int ifs(struct ht *scope) {
-
+	if (!expect(tk_if, IGNR))
+		return 1;
+	step();
 	return 0;
 }
 
@@ -254,9 +266,9 @@ int scpe(struct ht *scope) {
 	int err_code;
 
 	while (current) {
-		printf("scpe ");
+		log_msg("scpe ");
 
-		err_code = preorder(root, scope);
+		err_code = parse_statement(root, scope);
 		if (err_code) {
 			print_token(current);
 			err = 1;
@@ -267,7 +279,7 @@ int scpe(struct ht *scope) {
 			step();
 
 		}
-		printf("\n");
+		log_msg("\n");
 	}
 	return 0;
 }
@@ -277,14 +289,13 @@ int lbrk(struct ht *scope) {
 		return tk_lbrk;
 
 	step();
-	printf("lbrk ");
+	log_msg("lbrk ");
 	return 0;
 }
 
 int rbrk(struct ht *scope) {
 	if (!expect(tk_rbrk, IGNR))
 		return tk_rbrk;
-
 	step();
 
 	if (!ht_get(scope, id->name)) {
@@ -292,8 +303,78 @@ int rbrk(struct ht *scope) {
 		ht_add(scope, id);
 	}
 
-	printf("rbrk ");
+	log_msg("rbrk ");
 	return 0;
+}
+
+int lbrc(struct ht *scope) {
+	if (!expect(tk_lbrc, IGNR))
+		return tk_lbrc;
+
+	step();
+	log_msg("lbrc ");
+	return 0;
+}
+
+int rbrc(struct ht *scope) {
+	if (!expect(tk_rbrc, IGNR))
+		return tk_rbrc;
+
+	step();
+	log_msg("rbrc ");
+	return 0;
+}
+
+int parse_statement(struct ast_node *node, struct ht *scope) {
+	int res = 0;
+
+	restore = current;
+	assert(node->parse);
+	res = node->parse(scope);
+	if (res) {
+		current = restore;
+		return res;
+	}
+
+	if (node->branches_size == 0)
+		return 0;
+
+	log_msg("-> ");
+	for (int i = 0; i < node->branches_size; i++) {
+		res = parse_statement(node->branches[i], scope);
+		if (!res)
+			return res;
+	}
+
+	return res;
+}
+
+void first_scope() {
+	struct ht *scope = new_ht(HT_BUCKET_SIZE);
+	int err_code = 0;
+
+	while (current) {
+		log_msg("prog ");
+
+		err_code = parse_statement(root, scope);
+		if (err_code) {
+			print_token(current);
+			err = 1;
+
+			error_log(current, err_code);
+			while (current->type != tk_eos)
+				current = current->next;
+			step();
+
+		}
+		log_msg("\n");
+	}
+}
+
+void start_parse(struct token *tokens, struct ast_node *ast_root) {
+	current = tokens;
+	root = ast_root;
+	return first_scope();
 }
 
 int prec(struct token *tok) {
@@ -334,137 +415,5 @@ void chain(struct token **list, struct token **last, struct token *tok) {
 	} else {
 		(*last)->next = tok;
 		*last = (*last)->next;
-	}
-}
-
-struct token *parse_scope(struct token *tokens) {
-	/*
-	struct token *tok = tokens;
-	struct ht *scope = new_ht(HT_BUCKET_SIZE);
-
-	while (tok) {
-		switch(tok->type) {
-			case tk_char ... tk_str: {
-				
-			} break;
-
-			case tk_id: {
-				struct ht_item *id = ht_get(scope, tok->s);
-
-				if(id->type < tk_vchr || id->type > tk_vstr)
-					goto cont;
-				
-				if (!step(&tok, tok->next, tk_lbrk));
-				
-				tok = tok->next;
-				expr();
-
-				if (!expect_over(&tok, tok, tk_rbrk))
-					break;
-			cont:
-				if (!expect(&tok, tok->next, tk_asg))
-					break;
-				
-				expr();
-				write_pop_id(id);
-			} break;
-
-			case tk_if: {
-				if (!expect_over(&tok, tok->next, tk_lpar))
-					break;
-
-				expr();
-
-				if (!expect_over(&tok, tok, tk_rpar))
-					break;
-
-				if (!expect_over(&tok, tok, tk_lbrc))
-					break;
-
-				int label = current_label++;
-				writes("JMPC %i", label);
-				tok = parse_scope(tok);
-				writes("%i:", label);
-
-				if (!expect_over(&tok, tok, tk_rbrc))
-					break;
-			} break;
-
-			case tk_rbrc: {
-				struct ht_item *item = first(scope);
-
-				while (item) {
-					writes("FREE %s", item->name);
-					item = next(scope, item);
-				}
-
-				return tok;
-			} break;
-
-			case tk_prnt:
-				if (!expect(&tok, tok->next, tk_lpar))
-					break;
-
-				do {
-					tok = tok->next;
-					expr();
-					writes("WRT");
-				} while (tok->type == tk_coma);
-
-				expect_over(&tok, tok, tk_rpar);
-			break;
-
-			default: log_msg("Default: "); print_token(tok); break;
-		}
-
-		expect_over(&tok, tok, tk_eos);
-	}
-
-	*/
-}
-
-int preorder(struct ast_node *node, struct ht *scope) {
-	int res = 0;
-
-	restore = current;
-	res = node->parse(scope);
-	if (res) {
-		current = restore;
-		return res;
-	}
-
-	if (node->branches_size == 0)
-		return 0;
-
-	printf("-> ");
-	for (int i = 0; i < node->branches_size; i++) {
-		res = preorder(node->branches[i], scope);
-		if (!res)
-			return res;
-	}
-
-	return res;
-}
-
-void parse(struct token *tokens, struct ast_node *root) {
-	struct ht *scope = new_ht(HT_BUCKET_SIZE);
-	int err_code = 0;
-	current = tokens;
-
-	while (current) {
-		printf("prog ");
-
-		err_code = preorder(root, scope);
-		if (err_code) {
-			print_token(current);
-			err = 1;
-
-			error_log(current, err_code);
-			while (current->type != tk_eos)
-				current = current->next;
-			step();
-
-		}
-		printf("\n");
 	}
 }

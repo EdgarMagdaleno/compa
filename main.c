@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "msg.h"
 #include "source.h"
 #include "out.h"
 #include "ht.h"
@@ -15,8 +16,8 @@ int main(int argc, char **args) {
 	struct token *tokens = lex();
 	print_tokens(tokens);
 	struct ast_node *root = new_tree("tree.txt");
-	printf("- Statements\n");
-	parse(tokens, root);
-	printf("\n");
+	log_msg("- Statements\n");
+	start_parse(tokens, root);
+	log_msg("\n");
 	return 0;
 }

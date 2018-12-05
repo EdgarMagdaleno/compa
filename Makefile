@@ -1,2 +1,2 @@
 all:
-	gcc *.c -o compa -lm
+	gcc -g -ggdb *.c -o compa -lm

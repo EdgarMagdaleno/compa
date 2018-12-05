@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include "source.h"
+#include "writer.h"
 #include "msg.h"
 
 #define MAX_LINE_SIZE	256
@@ -18,6 +19,7 @@ void error_exit(const char *msg) {
 }
 
 void error_log(struct token *tok, int err_code) {
+	err = 1;
 	printf("\n");
 	va_list arglist;
 	printf(C_RED"[ERROR] %i,%i "C_RST, tok->line, tok->col);
@@ -27,8 +29,14 @@ void error_log(struct token *tok, int err_code) {
 	char line[MAX_LINE_SIZE];
 	fgets(line, MAX_LINE_SIZE, source);
 	printf("    %s", line);
+	fflush(stdout);
 }
 
-void log_msg(const char *msg) {
-	printf("%s", msg);
+void log_msg(const char *msg, ...) {
+	va_list arglist;
+	va_start(arglist, msg);
+	vprintf(msg, arglist);
+	va_end(arglist);
+
+	fflush(stdout);
 }

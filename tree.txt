@@ -1,9 +1,12 @@
-prog 4
+prog 5
+	eos 0
 	ifs 1
 		lpar 1
 			expr 1
 				rpar 1
-					scpe 0
+					lbrc 1
+						scpe 1
+							eos 0
 	decl 3
 		lbrk 1
 			expr 1

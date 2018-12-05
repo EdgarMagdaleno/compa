@@ -23,10 +23,13 @@ parser_f get_parser(char *name) {
 		{"expr", expr},
 		{"exrl", exrl},
 		{"idn", idn},
+		{"ifs", ifs},
+		{"lbrc", lbrc},
 		{"lbrk", lbrk},
 		{"lpar", lpar},
 		{"prnt", prnt},
 		{"prog", prog},
+		{"rbrc", rbrc},
 		{"rbrk", rbrk},
 		{"rpar", rpar},
 		{"scpe", scpe}
@@ -45,12 +48,13 @@ struct ast_node *build_tree(FILE *tree, int level) {
 	int n;
 	fscanf(tree, "%s %i", buf, &n);
 
-//	for (int i = 0; i < level; i++)
-//		printf("    ");
+	for (int i = 0; i < level; i++)
+		log_msg("    ");
 
 	struct ast_node *root = malloc(sizeof(struct ast_node));
+	log_msg(buf);
+	log_msg("\n");
 	root->parse = get_parser(buf);
-//	printf("%s\n", buf);
 
 	root->branches_size = n;
 	root->branches = malloc(sizeof(struct ast_node));
@@ -64,8 +68,6 @@ struct ast_node *new_tree(char *name) {
 	if (!tree)
 		error_exit("Invalid tree file");
 
-//	printf("- Tree\n");
 	struct ast_node *root = build_tree(tree, 0);
-//	printf("\n");
 	return root;
 }

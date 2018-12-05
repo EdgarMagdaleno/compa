@@ -8,8 +8,8 @@ struct token *top(struct token **stack);
 void chain(struct token **list, struct token **last, struct token *tok);
 void parse_expr(struct token **tokens, struct token *tok);
 struct token *parse_scope(struct token *tokens);
-void parse(struct token *tokens, struct ast_node *tree);
-int preorder(struct ht *node, struct ht *scope);
+void start_parse(struct token *tokens, struct ast_node *tree);
+int parse_statement(struct ast_node *node, struct ht *scope);
 int scpe(struct ht *scope);
 int ifs(struct ht *scope);
 int asgn(struct ht *scope);
@@ -25,5 +25,7 @@ int expr(struct ht *scope);
 int prog(struct ht *scope);
 int lbrk(struct ht *scope);
 int rbrk(struct ht *scope);
+int lbrc(struct ht *scope);
+int rbrc(struct ht *scope);
 
 #endif
